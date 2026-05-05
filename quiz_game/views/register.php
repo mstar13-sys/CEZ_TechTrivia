@@ -1,178 +1,117 @@
+<?php
+// ── Register Page ─────────────────────────────────────────────
+require_once __DIR__ . '/../autoload.php';
+
+if (is_logged_in()) {
+    redirect_to('../views/dashboard.php');
+}
+
+$error = get_flash('error');
+?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Register</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            width: 100%;
-            max-width: 400px;
-        }
-
-        h2 {
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 28px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px 15px;
-            margin: 0;
-            border: 2px solid #e0e0e0;
-            border-radius: 5px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        input.error {
-            border-color: #e74c3c;
-        }
-
-        .error-msg {
-            color: #e74c3c;
-            font-size: 12px;
-            margin-top: 5px;
-            display: none;
-        }
-
-        button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        button:active {
-            transform: translateY(0);
-        }
-
-        .link {
-            margin-top: 20px;
-            color: #666;
-            font-size: 14px;
-        }
-
-        .link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .link a:hover {
-            text-decoration: underline;
-        }
-
-        .alert {
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .alert-error {
-            background: #fde8e8;
-            color: #e74c3c;
-            border: 1px solid #e74c3c;
-        }
-
-        .alert-success {
-            background: #e8f8f0;
-            color: #27ae60;
-            border: 1px solid #27ae60;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechTrivia — Register</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/register.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
-
+    <div class="particles" id="particles2"></div>
     <div class="container">
-        <h2>Create Account</h2>
+        <div class="logo-area">
+            <div class="logo-icon">🧠</div>
+            <h2>Create Account</h2>
+            <p class="subtitle">Join TechTrivia and start playing</p>
+        </div>
 
-        <?php if(isset($_GET['error'])): ?>
-            <div class="alert alert-error"><?= htmlspecialchars($_GET['error']) ?></div>
-        <?php endif; ?>
+        <form id="registerForm" action="../controllers/AuthController.php" method="POST" novalidate>
+            <input type="hidden" name="action" value="register">
+            <?= csrf_field() ?>
 
-        <?php if(isset($_GET['success'])): ?>
-            <div class="alert alert-success">Registration successful! Redirecting to login...</div>
-        <?php endif; ?>
-
-        <form id="registerForm" action="../controllers/AuthController.php?action=register" method="POST">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-            
+            <!-- Username -->
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" placeholder="Enter username (3-20 characters)" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" title="Letters, numbers, and underscores only">
+                <div class="input-wrapper">
+                    <span class="input-icon">👤</span>
+                    <input type="text" id="username" name="username"
+                        placeholder="3–20 chars, letters/numbers/_" required
+                        minlength="3" maxlength="20" autocomplete="username">
+                    <span class="input-status" id="userStatus"></span>
+                </div>
+                <div class="field-hint" id="userHint"></div>
             </div>
 
+            <!-- Email -->
             <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="Enter your email address" required>
+                <label for="email">Email Address</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">✉️</span>
+                    <input type="email" id="email" name="email"
+                        placeholder="you@example.com" required autocomplete="email">
+                    <span class="input-status" id="emailStatus"></span>
+                </div>
+                <div class="field-hint" id="emailHint"></div>
             </div>
 
+            <!-- Password -->
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter password (min 6 characters)" required minlength="6">
+                <div class="input-wrapper">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="password" name="password"
+                        placeholder="Min 8 chars, 1 uppercase, 1 number" required
+                        minlength="8" autocomplete="new-password">
+                    <span class="input-status" id="pwStatus"></span>
+                </div>
+                <div class="strength-bar">
+                    <div class="strength-fill" id="strengthFill"></div>
+                </div>
+                <div class="pw-reqs" id="pwReqs">
+                    <div class="pw-req" id="req-length"><span class="check">○</span> 8+ characters</div>
+                    <div class="pw-req" id="req-upper"><span class="check">○</span> Uppercase letter</div>
+                    <div class="pw-req" id="req-number"><span class="check">○</span> Number</div>
+                    <div class="pw-req" id="req-special"><span class="check">○</span> Special char (optional)</div>
+                </div>
             </div>
 
+            <!-- Confirm password -->
             <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required>
+                <div class="input-wrapper">
+                    <span class="input-icon">🔑</span>
+                    <input type="password" id="confirmPassword" name="confirmPassword"
+                        placeholder="Re-enter your password" required autocomplete="new-password">
+                    <span class="input-status" id="confirmStatus"></span>
+                </div>
+                <div class="field-hint" id="confirmHint"></div>
             </div>
 
-            <button type="submit">Register</button>
+            <button type="submit" id="registerBtn" disabled>Create Account →</button>
         </form>
 
-        <p class="link">Already have an account? <a href="../../index.php">Login here</a></p>
+        <p class="link">Already have an account? <a href="../login.php">Sign in here</a></p>
     </div>
 
+    <script src="../assets/js/register.js"></script>
+    <?php if ($error): ?>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Registration Error',
+                    text: <?= json_encode($error) ?>,
+                    background: '#1a1830',
+                    color: '#f1f0ff',
+                    confirmButtonColor: '#4f46e5',
+                });
+            });
+        </script>
+    <?php endif; ?>
 </body>
+
 </html>

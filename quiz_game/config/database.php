@@ -1,22 +1,8 @@
 <?php
-class Config {
-    private $host = "localhost";
-    private $db_name = "quiz_game";
-    private $username = "root";
-    private $password = "root";
-
-    public function connect() {
-        try {
-            $conn = new PDO(
-                "mysql:host=".$this->host.";dbname=".$this->db_name,
-                $this->username,
-                $this->password
-            );
-            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            return $conn;
-        } catch(PDOException $e) {
-            die("Database Error: " . $e->getMessage());
-        }
-    }
-}
-?>
+// ── Database Configuration ────────────────────────────────────
+// Change these values to match your local/server setup
+define('DB_HOST',     'localhost');
+define('DB_NAME',     'quiz_game');
+define('DB_USER',     'root');
+define('DB_PASS',     'root');
+define('DB_CHARSET',  'utf8mb4');
