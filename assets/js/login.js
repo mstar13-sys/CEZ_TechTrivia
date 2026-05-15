@@ -14,6 +14,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordHint    = document.getElementById('passwordHint');
     const passwordStatus  = document.getElementById('passwordStatus');
 
+    document.querySelectorAll('[data-toggle-password]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const input = document.getElementById(button.dataset.togglePassword);
+            if (!input) return;
+            const showing = input.type === 'text';
+            input.type = showing ? 'password' : 'text';
+            button.innerHTML = showing ? '&#128065;' : '&#128584;';
+            button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+            button.title = showing ? 'Show password' : 'Hide password';
+        });
+    });
+
     function setFieldState(input, hint, valid, msg) {
         input.classList.toggle('valid',   valid === true);
         input.classList.toggle('invalid', valid === false);

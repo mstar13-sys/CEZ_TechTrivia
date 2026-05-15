@@ -319,3 +319,29 @@ body.light-mode .you-badge { color: #1e40af; }
 
 body.light-mode .lb-empty { color: #475569; }
 body.light-mode .lb-empty a { color: #2563eb; }
+
+@media (max-width: 768px) {
+    .lb-filters {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .filter-select,
+    .filter-clear {
+        width: 100%;
+    }
+
+    .lb-card {
+        overflow-x: auto;
+    }
+
+    .lb-card table {
+        min-width: 620px;
+    }
+
+    .lb-card .table-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+}

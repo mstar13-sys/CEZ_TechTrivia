@@ -429,3 +429,37 @@ body.light-mode .ld-label { color: #475569; }
 body.light-mode .ld-value { color: #111827; }
 body.light-mode .back-btn { color: #475569; }
 body.light-mode .back-btn:hover { color: #111827; }
+
+@media (max-width: 768px) {
+    .step-card {
+        padding: 24px 18px;
+    }
+
+    .category-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+
+    .diff-btn {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        padding: 16px;
+    }
+
+    .diff-xp {
+        margin-left: 0;
+    }
+
+    .launch-details {
+        gap: 12px;
+    }
+
+    .launch-detail,
+    .launch-btn {
+        width: 100%;
+    }
+
+    .launch-btn {
+        justify-content: center;
+        padding-inline: 18px;
+    }
+}

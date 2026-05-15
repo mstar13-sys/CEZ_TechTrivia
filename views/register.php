@@ -66,6 +66,7 @@ $error = get_flash('error');
                     <input type="password" id="password" name="password"
                         placeholder="Min 8 chars, 1 uppercase, 1 number" required
                         minlength="8" autocomplete="new-password">
+                    <button type="button" class="password-toggle" data-toggle-password="password" aria-label="Show password" title="Show password">&#128065;</button>
                     <span class="input-status" id="pwStatus"></span>
                 </div>
                 <div class="strength-bar">
@@ -86,6 +87,7 @@ $error = get_flash('error');
                     <span class="input-icon">🔑</span>
                     <input type="password" id="confirmPassword" name="confirmPassword"
                         placeholder="Re-enter your password" required autocomplete="new-password">
+                    <button type="button" class="password-toggle" data-toggle-password="confirmPassword" aria-label="Show password" title="Show password">&#128065;</button>
                     <span class="input-status" id="confirmStatus"></span>
                 </div>
                 <div class="field-hint" id="confirmHint"></div>

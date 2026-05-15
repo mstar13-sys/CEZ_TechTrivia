@@ -12,6 +12,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     setTheme(savedTheme);
 
+    const sidebar = document.querySelector('.sidebar');
+    const menuToggle = document.querySelector('[data-mobile-menu-toggle]');
+    const sidebarBackdrop = document.querySelector('[data-sidebar-backdrop]');
+
+    function setMobileMenu(open) {
+        if (!sidebar || !menuToggle || !sidebarBackdrop) return;
+        document.body.classList.toggle('sidebar-open', open);
+        sidebar.classList.toggle('open', open);
+        sidebarBackdrop.classList.toggle('open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+    }
+
+    menuToggle?.addEventListener('click', () => {
+        setMobileMenu(!document.body.classList.contains('sidebar-open'));
+    });
+
+    sidebarBackdrop?.addEventListener('click', () => setMobileMenu(false));
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') setMobileMenu(false);
+    });
+
+    sidebar?.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => setMobileMenu(false));
+    });
+
     function setTheme(theme) {
         // Update body class
         if (theme === 'light') {

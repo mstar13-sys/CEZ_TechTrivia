@@ -24,6 +24,12 @@ $categories = $userModel->getAvailableCategories();
 </head>
 <body>
 
+<div class="mobile-topbar">
+    <button class="mobile-menu-btn" type="button" data-mobile-menu-toggle aria-label="Open menu" aria-expanded="false">&#9776;</button>
+    <div class="mobile-brand">CEZ TechTrivia</div>
+</div>
+<div class="sidebar-backdrop" data-sidebar-backdrop></div>
+
 <!-- Sidebar (same as dashboard) -->
 <div class="sidebar">
     <div class="sidebar-brand">

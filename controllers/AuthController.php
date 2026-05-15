@@ -109,6 +109,48 @@ class AuthController {
         }
     }
 
+    public function forgotPassword() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            redirect_to('../views/forgot_password.php');
+        }
+
+        if (!verify_csrf($_POST['csrf_token'] ?? '')) {
+            set_flash('error', 'Invalid request. Please try again.');
+            redirect_to('../views/forgot_password.php');
+        }
+
+        $username        = trim($_POST['username'] ?? '');
+        $email           = trim($_POST['email'] ?? '');
+        $password        = $_POST['password'] ?? '';
+        $confirmPassword = $_POST['confirmPassword'] ?? '';
+
+        if (empty($username) || empty($email) || empty($password) || empty($confirmPassword)) {
+            set_flash('error', 'All fields are required.');
+            redirect_to('../views/forgot_password.php');
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            set_flash('error', 'Please enter a valid email address.');
+            redirect_to('../views/forgot_password.php');
+        }
+        if (strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
+            set_flash('error', 'Password must be 8+ chars with an uppercase letter and a number.');
+            redirect_to('../views/forgot_password.php');
+        }
+        if ($password !== $confirmPassword) {
+            set_flash('error', 'Passwords do not match.');
+            redirect_to('../views/forgot_password.php');
+        }
+
+        $result = $this->user->resetPasswordByUsernameEmail($username, $email, $password);
+        if ($result['success']) {
+            set_flash('password_reset', $result['message']);
+            redirect_to('../login.php');
+        }
+
+        set_flash('error', $result['message']);
+        redirect_to('../views/forgot_password.php');
+    }
+
     // ── Logout ────────────────────────────────────────────────
     public function logout() {
         if (!verify_csrf($_POST['csrf_token'] ?? '')) {
@@ -138,6 +180,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 switch ($action) {
     case 'register': $auth->register(); break;
     case 'login':    $auth->login();    break;
+    case 'forgot_password': $auth->forgotPassword(); break;
     case 'logout':   $auth->logout();   break;
     case 'check_availability':
         header('Content-Type: application/json');

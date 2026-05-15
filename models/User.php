@@ -41,6 +41,30 @@ class User
         return $stmt->rowCount() > 0;
     }
 
+    public function resetPasswordByUsernameEmail($username, $email, $new_password)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT player_id FROM Player WHERE username = :username AND email = :email"
+        );
+        $stmt->execute([':username' => $username, ':email' => $email]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            return ['success' => false, 'message' => 'No account matches that username and email.'];
+        }
+
+        $hash = password_hash($new_password, PASSWORD_BCRYPT, ['cost' => 12]);
+        $stmt = $this->conn->prepare(
+            "UPDATE Player SET password = :password WHERE player_id = :id"
+        );
+        $result = $stmt->execute([':password' => $hash, ':id' => $user['player_id']]);
+
+        return [
+            'success' => $result,
+            'message' => $result ? 'Password changed successfully. You can now sign in.' : 'Failed to change password.',
+        ];
+    }
+
     public function emailExists($email)
     {
         $stmt = $this->conn->prepare("SELECT player_id FROM Player WHERE email = :email");

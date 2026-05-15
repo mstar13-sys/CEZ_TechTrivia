@@ -152,7 +152,6 @@ switch ($action) {
             'trivia'             => $currentQ['trivia'] ?? '',
             'selected_choice_id' => $choiceId,
         ];
-        ];
 
         redirect_to('../views/quiz.php');
         break;

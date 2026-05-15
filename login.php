@@ -9,6 +9,7 @@ if (is_logged_in()) {
 
 $error      = get_flash('error');
 $registered = get_flash('registered');
+$passwordReset = get_flash('password_reset');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -51,6 +52,7 @@ $registered = get_flash('registered');
                 <span class="input-icon">🔒</span>
                 <input type="password" id="password" name="password"
                        placeholder="Enter your password" required autocomplete="new-password">
+                <button type="button" class="password-toggle" data-toggle-password="password" aria-label="Show password" title="Show password">&#128065;</button>
                 <span class="input-status" id="passwordStatus"></span>
             </div>
             <div class="field-hint" id="passwordHint"></div>
@@ -59,6 +61,7 @@ $registered = get_flash('registered');
         <button type="submit" id="loginBtn">Sign In →</button>
     </form>
 
+    <p class="link forgot-link"><a href="views/forgot_password.php">Forgot password?</a></p>
     <p class="link">New user? <a href="views/register.php">Create an account</a></p>
     <p class="link" style="margin-top:8px"><a href="index.php">← Back to Home</a></p>
 </div>
@@ -83,6 +86,17 @@ document.addEventListener('DOMContentLoaded', () => {
         text: 'Registration successful! You can now sign in.',
         background: '#1a1830', color: '#f1f0ff', confirmButtonColor: '#4f46e5',
         timer: 4000, timerProgressBar: true,
+    });
+});
+</script>
+<?php endif; ?>
+<?php if ($passwordReset): ?>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    Swal.fire({
+        icon: 'success', title: 'Password Changed',
+        text: <?= json_encode($passwordReset) ?>,
+        background: '#1a1830', color: '#f1f0ff', confirmButtonColor: '#4f46e5',
     });
 });
 </script>

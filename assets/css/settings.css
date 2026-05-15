@@ -2,7 +2,7 @@
 
 .settings-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr));
     gap: 20px;
 }
 
@@ -250,8 +250,30 @@ body.light-mode .info-item {
         grid-template-columns: 1fr;
     }
 
+    .settings-card-header,
+    .theme-toggle {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .theme-switch {
+        width: 100%;
+    }
+
+    .theme-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
     .info-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .settings-card-body,
+    .settings-card-header {
+        padding: 18px;
     }
 }
 
