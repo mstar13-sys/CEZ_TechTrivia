@@ -35,8 +35,14 @@ $flash_registered = get_flash('registered');
 
 require_once __DIR__ . '/models/User.php';
 $userModel   = new User();
-$leaderboard = $userModel->getLeaderboard(20);
-$medals      = ['🥇', '🥈', '🥉'];
+$leaderboard = $userModel->getLeaderboard(10);
+$topPlayers = array_slice($leaderboard, 0, 3);
+$remainingPlayers = array_slice($leaderboard, 3, 7, true);
+$trophyImages = [
+    'assets/image/trophy_gold.png',
+    'assets/image/trophy_silver.png',
+    'assets/image/trophy_bronze.png',
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -66,6 +72,116 @@ $medals      = ['🥇', '🥈', '🥉'];
             text-align: center;
             color: #666;
             margin-bottom: 32px;
+        }
+
+        .lb-podium {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 18px;
+            max-width: 900px;
+            margin: 0 auto 28px;
+        }
+
+        .lb-podium-card {
+            width: min(100%, 240px);
+            min-height: 238px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 20px 18px;
+            text-align: center;
+            box-shadow: 0 14px 35px rgba(5, 10, 48, 0.12);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lb-podium-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto;
+            height: 6px;
+            background: #4f46e5;
+        }
+
+        .lb-podium-card.rank-1 {
+            order: 2;
+            min-height: 284px;
+            transform: translateY(-14px);
+            border-color: #facc15;
+        }
+
+        .lb-podium-card.rank-1::before {
+            background: #facc15;
+        }
+
+        .lb-podium-card.rank-2 {
+            order: 1;
+            border-color: #cbd5e1;
+        }
+
+        .lb-podium-card.rank-2::before {
+            background: #94a3b8;
+        }
+
+        .lb-podium-card.rank-3 {
+            order: 3;
+            border-color: #f59e0b;
+        }
+
+        .lb-podium-card.rank-3::before {
+            background: #f59e0b;
+        }
+
+        .lb-trophy {
+            width: 92px;
+            height: 92px;
+            object-fit: contain;
+            margin: 8px auto 10px;
+            display: block;
+        }
+
+        .rank-1 .lb-trophy {
+            width: 118px;
+            height: 118px;
+        }
+
+        .lb-place {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #050a30;
+            color: #fff;
+            font-weight: 800;
+            font-size: .9rem;
+            margin-bottom: 8px;
+        }
+
+        .lb-podium-name {
+            color: #050a30;
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+            overflow-wrap: anywhere;
+        }
+
+        .rank-1 .lb-podium-name {
+            font-size: 1.25rem;
+        }
+
+        .lb-podium-xp {
+            color: #4f46e5;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .lb-podium-meta {
+            color: #64748b;
+            font-size: .82rem;
+            font-weight: 600;
         }
 
         .lb-table {
@@ -120,6 +236,32 @@ $medals      = ['🥇', '🥈', '🥉'];
         .lb-xp {
             color: #4f46e5;
             font-weight: 600;
+        }
+
+        .lb-empty {
+            text-align: center;
+            color: #666;
+            padding: 32px 0;
+        }
+
+        @media (max-width: 768px) {
+            .lb-podium {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .lb-podium-card,
+            .lb-podium-card.rank-1 {
+                order: initial;
+                width: 100%;
+                min-height: 0;
+                transform: none;
+            }
+
+            .lb-table {
+                display: block;
+                overflow-x: auto;
+            }
         }
     </style>
 </head>
@@ -199,7 +341,26 @@ $medals      = ['🥇', '🥈', '🥉'];
     <!-- Leaderboard -->
     <section id="leaderboard">
         <h2>🏆 Leaderboard</h2>
-        <p class="subtitle">Top players ranked by total XP earned</p>
+        <p class="subtitle">Top 10 players ranked by total XP earned</p>
+
+        <?php if (empty($leaderboard)): ?>
+            <p class="lb-empty">No players yet. Be the first to play!</p>
+        <?php else: ?>
+            <div class="lb-podium" aria-label="Top three leaderboard players">
+                <?php foreach ($topPlayers as $i => $p): ?>
+                    <div class="lb-podium-card rank-<?= $i + 1 ?>">
+                        <span class="lb-place">#<?= $i + 1 ?></span>
+                        <img class="lb-trophy" src="<?= $trophyImages[$i] ?>" alt="Rank <?= $i + 1 ?> trophy">
+                        <div class="lb-podium-name"><?= htmlspecialchars($p['username']) ?></div>
+                        <div class="lb-podium-xp"><?= number_format((int)$p['total_xp']) ?> XP</div>
+                        <div class="lb-podium-meta">
+                            Level <?= (int)$p['level'] ?> · Best <?= (int)$p['best_score'] ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <?php if (!empty($remainingPlayers)): ?>
         <table class="lb-table">
             <thead>
                 <tr>
@@ -212,9 +373,9 @@ $medals      = ['🥇', '🥈', '🥉'];
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($leaderboard as $i => $p): ?>
+                <?php foreach ($remainingPlayers as $i => $p): ?>
                     <tr <?= $p['username'] === ($_SESSION['username'] ?? '') ? 'class="highlight-row"' : '' ?>>
-                        <td class="rank-medal"><?= $medals[$i] ?? ($i + 1) ?></td>
+                        <td class="rank-medal"><?= $i + 1 ?></td>
                         <td>
                             <span class="lb-avatar"><?= strtoupper(substr($p['username'], 0, 1)) ?></span>
                             <?= htmlspecialchars($p['username']) ?>
@@ -230,6 +391,8 @@ $medals      = ['🥇', '🥈', '🥉'];
                 <?php endforeach; ?>
             </tbody>
         </table>
+            <?php endif; ?>
+        <?php endif; ?>
     </section>
 
     <footer>
