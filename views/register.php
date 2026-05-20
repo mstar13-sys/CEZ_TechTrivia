@@ -15,6 +15,7 @@ $error = get_flash('error');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TechTrivia — Register</title>
+    <link rel="icon" type="image/png" href="../assets/image/logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/register.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -24,7 +25,7 @@ $error = get_flash('error');
     <div class="particles" id="particles2"></div>
     <div class="container">
         <div class="logo-area">
-            <div class="logo-icon">🧠</div>
+            <div class="logo-icon"><img src="../assets/image/logo.png" alt="CEZ TechTrivia logo"></div>
             <h2>Create Account</h2>
             <p class="subtitle">Join TechTrivia and start playing</p>
         </div>

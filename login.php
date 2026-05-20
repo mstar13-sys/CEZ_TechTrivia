@@ -17,6 +17,7 @@ $passwordReset = get_flash('password_reset');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TechTrivia — Login</title>
+    <link rel="icon" type="image/png" href="assets/image/logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/login.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -27,7 +28,7 @@ $passwordReset = get_flash('password_reset');
 
 <div class="container">
     <div class="logo-area">
-        <div class="logo-icon">🎯</div>
+        <div class="logo-icon"><img src="assets/image/logo.png" alt="CEZ TechTrivia logo"></div>
         <h2>CEZ TechTrivia</h2>
         <p class="subtitle">Sign in to start your quiz journey</p>
     </div>

@@ -42,6 +42,17 @@
             font-size: 1.5rem;
             font-weight: 800;
             text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo img {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+            background: #ffffff;
+            border-radius: 9px;
+            padding: 4px;
         }
 
         nav ul {

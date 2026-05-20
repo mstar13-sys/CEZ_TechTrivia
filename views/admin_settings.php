@@ -19,6 +19,7 @@ $flash_error   = get_flash('error');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings — Admin Panel</title>
+    <link rel="icon" type="image/png" href="../assets/image/logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="../assets/css/settings.css">
@@ -35,7 +36,7 @@ $flash_error   = get_flash('error');
 <!-- Sidebar -->
 <div class="sidebar">
     <div class="sidebar-brand">
-        <div class="brand-icon">🛡️</div>
+        <div class="brand-icon"><img src="../assets/image/logo.png" alt="CEZ TechTrivia logo"></div>
         <div class="brand-name">CEZ<br><span>Admin</span></div>
     </div>
     <div class="admin-badge">⚙ Admin Panel</div>

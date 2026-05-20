@@ -34,6 +34,7 @@ $feedback = $_SESSION['quiz_feedback'] ?? null;
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz — TechTrivia</title>
+<link rel="icon" type="image/png" href="../assets/image/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/quiz.css">
 </head>

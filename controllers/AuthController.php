@@ -16,12 +16,12 @@ class AuthController {
     // ── Register ──────────────────────────────────────────────
     public function register() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
 
         if (!verify_csrf($_POST['csrf_token'] ?? '')) {
             set_flash('error', 'Invalid request. Please try again.');
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
 
         $username        = trim($_POST['username'] ?? '');
@@ -32,51 +32,51 @@ class AuthController {
         // Server-side validation (client side already checked, but never trust client)
         if (empty($username) || empty($email) || empty($password) || empty($confirmPassword)) {
             set_flash('error', 'All fields are required.');
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             set_flash('error', 'Please enter a valid email address.');
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
         if (strlen($username) < 3 || strlen($username) > 20 || !preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
             set_flash('error', 'Username must be 3-20 characters (letters, numbers, underscores).');
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
         if (strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
             set_flash('error', 'Password must be 8+ chars with an uppercase letter and a number.');
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
         if ($password !== $confirmPassword) {
             set_flash('error', 'Passwords do not match.');
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
         if ($this->user->userExists($username)) {
             set_flash('error', 'Username is already taken.');
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
         if ($this->user->emailExists($email)) {
             set_flash('error', 'Email is already registered.');
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
 
         if ($this->user->register($username, $email, $password)) {
             set_flash('registered', true);
-            redirect_to('login.php');
+            redirect_to('../login.php');
         } else {
             set_flash('error', 'Registration failed. Please try again.');
-            redirect_to('views/register.php');
+            redirect_to('../views/register.php');
         }
     }
 
     // Login 
     public function login() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            redirect_to('login.php');
+            redirect_to('../login.php');
         }
 
         if (!verify_csrf($_POST['csrf_token'] ?? '')) {
             set_flash('error', 'Invalid request. Please try again.');
-            redirect_to('login.php');
+            redirect_to('../login.php');
         }
 
         $username = trim($_POST['username'] ?? '');
@@ -84,7 +84,7 @@ class AuthController {
 
         if (empty($username) || empty($password)) {
             set_flash('error', 'Please enter your username and password.');
-            redirect_to('login.php');
+            redirect_to('../login.php');
         }
 
         $userData = $this->user->login($username, $password);

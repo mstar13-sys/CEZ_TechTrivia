@@ -8,6 +8,8 @@ if (!is_logged_in()) {
 
 require_once __DIR__ . '/../models/User.php';
 $userModel = new User();
+$playerStats = $userModel->getPlayerStats($_SESSION['user_id']) ?? [];
+$rank = $userModel->getRankForXp((int)($playerStats['total_xp'] ?? 0));
 
 // Filter params (empty string = no filter)
 $filterCategory   = trim($_GET['category']   ?? '');
@@ -40,6 +42,7 @@ $medals = ['🥇', '🥈', '🥉'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leaderboard — TechTrivia</title>
+    <link rel="icon" type="image/png" href="../assets/image/logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/dashboard.css">
     <link rel="stylesheet" href="../assets/css/leaderboard.css">
@@ -55,13 +58,14 @@ $medals = ['🥇', '🥈', '🥉'];
 
 <div class="sidebar">
     <div class="sidebar-brand">
-        <div class="brand-icon">🎯</div>
+        <div class="brand-icon"><img src="../assets/image/logo.png" alt="CEZ TechTrivia logo"></div>
         <div class="brand-name">CEZ<br><span>TechTrivia</span></div>
     </div>
     <div class="user-profile">
         <div class="user-avatar">🎮</div>
         <div class="user-name"><?= htmlspecialchars(ucfirst($_SESSION['username'] ?? 'Player')) ?></div>
-        <div class="user-role">Player</div>
+        <div class="user-role"><?= htmlspecialchars($rank['rank_name']) ?> - Level <?= (int)($playerStats['level'] ?? 1) ?></div>
+        <div class="user-rank-medal"><?= htmlspecialchars($rank['medal'] ?? 'Bronze') ?></div>
     </div>
     <p class="nav-section-label">Navigation</p>
     <ul class="nav-menu">
