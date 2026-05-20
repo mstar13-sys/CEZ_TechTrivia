@@ -4,6 +4,26 @@
 (function () {
     'use strict';
 
+    // Question BGM modal sounds
+    const quizSounds = {
+        question: document.getElementById('questionBgm'),
+        finalAnswer: document.getElementById('finalAnswerBgm'),
+        win: document.getElementById('winBgm'),
+        lose: document.getElementById('loseBgm')
+    };
+
+    function playQuizSound(sound) {
+        if (!sound) return;
+
+        sound.pause();
+        sound.currentTime = 0;
+
+        const playRequest = sound.play();
+        if (playRequest && typeof playRequest.catch === 'function') {
+            playRequest.catch(function() {});
+        }
+    }
+
     // ── Theme ─────────────────────────────────────────────────
     const themeToggleBtn = document.getElementById('themeToggle');
     const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -139,11 +159,20 @@
             feedbackBox.style.opacity = '1';
             feedbackBox.style.transform = 'translateY(0)';
         });
+
+        playQuizSound(
+            feedbackBox.classList.contains('feedback-correct')
+                ? quizSounds.win
+                : quizSounds.lose
+        );
+    } else if (card) {
+        playQuizSound(quizSounds.question);
     }
 
     // ── Answer selection ──────────────────────────────────────
     window.selectAnswer = function (btn) {
         if (timerInterval) clearInterval(timerInterval);
+        playQuizSound(quizSounds.finalAnswer);
 
         document.querySelectorAll('.choice-btn').forEach(function(b) {
             b.disabled = true;
@@ -157,7 +186,7 @@
         setTimeout(function() {
             var form = document.getElementById('answerForm');
             if (form) form.submit();
-        }, 250);
+        }, 700);
     };
 
 })();

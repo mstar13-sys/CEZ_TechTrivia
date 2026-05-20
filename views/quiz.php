@@ -156,6 +156,11 @@ $feedback = $_SESSION['quiz_feedback'] ?? null;
 
 </div>
 
+<audio id="questionBgm" src="../assets/audio/question-bgm/Question.mp3" preload="auto"></audio>
+<audio id="finalAnswerBgm" src="../assets/audio/question-bgm/Final Answer.mp3" preload="auto"></audio>
+<audio id="winBgm" src="../assets/audio/question-bgm/Win.mp3" preload="auto"></audio>
+<audio id="loseBgm" src="../assets/audio/question-bgm/Lose.mp3" preload="auto"></audio>
+
 <script src="../assets/js/quiz.js"></script>
 </body>
 </html>

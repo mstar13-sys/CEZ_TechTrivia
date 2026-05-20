@@ -42,8 +42,10 @@ $flash_error   = get_flash('error');
     <p class="nav-section-label">Management</p>
     <ul class="nav-menu">
         <li><a href="admin.php" class="nav-link"><span class="nav-icon">📊</span> Overview</a></li>
-        <li><a href="admin.php" class="nav-link" data-tab="players"><span class="nav-icon">👥</span> Players</a></li>
-        <li><a href="admin.php" class="nav-link" data-tab="questions"><span class="nav-icon">❓</span> Questions</a></li>
+        <li><a href="admin.php?tab=players" class="nav-link"><span class="nav-icon">👥</span> Players</a></li>
+        <li><a href="admin.php?tab=questions" class="nav-link"><span class="nav-icon">❓</span> Questions</a></li>
+        <li><a href="admin.php?tab=achievements" class="nav-link"><span class="nav-icon">🏅</span> Achievements</a></li>
+        <li><a href="admin.php?tab=ranks" class="nav-link"><span class="nav-icon">R</span> Ranks</a></li>
     </ul>
     <p class="nav-section-label">Account</p>
     <ul class="nav-menu">
@@ -210,3 +212,4 @@ document.addEventListener('DOMContentLoaded', () => {
 <?php endif; ?>
 </body>
 </html>
+

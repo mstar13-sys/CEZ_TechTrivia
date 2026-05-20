@@ -1,0 +1,4 @@
+Question     - mo play if mo load kada question modal
+Final Answer - mo play if mo click ag user sa choices
+Win          - mo play if sakto ag choice sa user
+Lose         - mo play if mali ag choice sa user

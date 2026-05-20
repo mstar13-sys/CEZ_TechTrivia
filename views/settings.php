@@ -49,6 +49,7 @@ $flash_error   = get_flash('error');
     <ul class="nav-menu">
         <li><a href="dashboard.php"><span class="nav-icon">🏠</span> Dashboard</a></li>
         <li><a href="../views/select_quiz.php"><span class="nav-icon">🎮</span> Start Quiz</a></li>
+        <li><a href="achievements.php"><span class="nav-icon">🏅</span> Achievements</a></li>
         <li><a href="leaderboard.php"><span class="nav-icon">🏆</span> Leaderboard</a></li>
         <li><a href="settings.php" class="active"><span class="nav-icon">⚙️</span> Settings</a></li>
     </ul>

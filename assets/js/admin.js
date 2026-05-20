@@ -79,6 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector(`.tab-btn[data-tab="${link.dataset.tab}"]`)?.click();
         });
     });
+    const requestedTab = new URLSearchParams(window.location.search).get('tab') || window.location.hash.replace('#', '');
+    if (requestedTab) {
+        document.querySelector(`.tab-btn[data-tab="${requestedTab}"]`)?.click();
+    }
+
 
     // ── Table search filter ───────────────────────────────────
     window.filterTable = function(tableId, query) {
@@ -110,6 +115,34 @@ document.addEventListener('DOMContentLoaded', () => {
         Swal.fire({
             icon: 'warning', title: 'Delete Question?',
             text: 'This will also delete all its choices.',
+            background: '#1a1830', color: '#f1f0ff',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444', cancelButtonColor: '#4f46e5',
+            confirmButtonText: 'Delete', cancelButtonText: 'Cancel',
+        }).then(r => { if (r.isConfirmed) form.submit(); });
+        return false;
+    };
+
+    window.confirmDeleteAchievement = function(e) {
+        e.preventDefault();
+        const form = e.target;
+        Swal.fire({
+            icon: 'warning', title: 'Delete Achievement?',
+            text: 'Players will lose the unlocked record for this achievement.',
+            background: '#1a1830', color: '#f1f0ff',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444', cancelButtonColor: '#4f46e5',
+            confirmButtonText: 'Delete', cancelButtonText: 'Cancel',
+        }).then(r => { if (r.isConfirmed) form.submit(); });
+        return false;
+    };
+
+    window.confirmDeleteRank = function(e) {
+        e.preventDefault();
+        const form = e.target;
+        Swal.fire({
+            icon: 'warning', title: 'Delete Rank?',
+            text: 'Players in this XP range will fall back to the next matching rank.',
             background: '#1a1830', color: '#f1f0ff',
             showCancelButton: true,
             confirmButtonColor: '#ef4444', cancelButtonColor: '#4f46e5',
@@ -164,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 data.choices.forEach((choice, i) => {
                     const input = document.getElementById(`edit_choice_${i}`);
-                    const radio = document.querySelector(`input[name="edit_correct_index"][value="${i}"]`);
+                    const radio = document.querySelector(`input[name="correct_index"][value="${i}"]`);
                     if (input) input.value = choice.choice_text;
                     if (radio) radio.checked = parseInt(choice.is_correct) === 1;
                 });
@@ -185,6 +218,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === this) closeEditModal();
     });
 
+    window.openAchievementModal = function(achievement) {
+        document.getElementById('edit_achievement_id').value = achievement.achievement_id || '';
+        document.getElementById('edit_achievement_title').value = achievement.title || '';
+        document.getElementById('edit_achievement_description').value = achievement.description || '';
+        document.getElementById('edit_achievement_condition_type').value = achievement.condition_type || 'quiz_count';
+        document.getElementById('edit_achievement_condition_value').value = achievement.condition_value || 1;
+        document.getElementById('achievementModal')?.classList.add('open');
+    };
+
+    window.closeAchievementModal = function() {
+        document.getElementById('achievementModal')?.classList.remove('open');
+    };
+
+    document.getElementById('achievementModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeAchievementModal();
+    });
+
+    window.openRankModal = function(rank) {
+        document.getElementById('edit_rank_id').value = rank.rank_id || '';
+        document.getElementById('edit_rank_name').value = rank.rank_name || '';
+        document.getElementById('edit_rank_min_xp').value = rank.min_xp || 0;
+        document.getElementById('edit_rank_max_xp').value = rank.max_xp === null ? '' : rank.max_xp;
+        document.getElementById('edit_rank_medal').value = rank.medal || 'Bronze';
+        document.getElementById('rankModal')?.classList.add('open');
+    };
+
+    window.closeRankModal = function() {
+        document.getElementById('rankModal')?.classList.remove('open');
+    };
+
+    document.getElementById('rankModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeRankModal();
+    });
+
     // Edit form validation
     const editForm = document.getElementById('editQuestionForm');
     if (editForm) {
@@ -198,3 +265,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+

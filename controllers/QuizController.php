@@ -173,14 +173,16 @@ switch ($action) {
 
         // Game over: out of lives
         if ($_SESSION['quiz_lives'] <= 0) {
-            $userModel->saveGameSession($_SESSION['user_id'], $score, $xp, $category, $difficulty);
+            $saveResult = $userModel->saveGameSession($_SESSION['user_id'], $score, $xp, $category, $difficulty);
+            $_SESSION['unlocked_achievements'] = $saveResult['unlocked'] ?? [];
             $_SESSION['quiz_active'] = false;
             redirect_to('../views/game_over.php');
         }
 
         // Quiz finished: all questions answered
         if ($_SESSION['quiz_index'] >= $_SESSION['quiz_total']) {
-            $userModel->saveGameSession($_SESSION['user_id'], $score, $xp, $category, $difficulty);
+            $saveResult = $userModel->saveGameSession($_SESSION['user_id'], $score, $xp, $category, $difficulty);
+            $_SESSION['unlocked_achievements'] = $saveResult['unlocked'] ?? [];
             $_SESSION['total_xp']    = ($_SESSION['total_xp'] ?? 0) + $xp;
             $_SESSION['quiz_active'] = false;
             redirect_to('../views/results.php');

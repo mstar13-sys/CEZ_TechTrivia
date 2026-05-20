@@ -77,11 +77,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = $result ? 'Question deleted.' : 'Failed to delete.';
             $msgType = $result ? 'success' : 'error';
         }
+
+        if ($act === 'add_achievement' || $act === 'edit_achievement') {
+            $aid = (int)($_POST['achievement_id'] ?? 0);
+            $title = trim($_POST['title'] ?? '');
+            $description = trim($_POST['description'] ?? '');
+            $conditionType = trim($_POST['condition_type'] ?? '');
+            $conditionValue = (int)($_POST['condition_value'] ?? 0);
+            $allowedConditions = [
+                'quiz_count', 'total_xp', 'best_score', 'perfect_quiz_count',
+                'current_streak', 'max_streak', 'easy_quiz_count',
+                'medium_quiz_count', 'hard_quiz_count',
+            ];
+
+            if ($title === '' || $description === '' || !in_array($conditionType, $allowedConditions, true) || $conditionValue < 1) {
+                $message = 'Fill in all achievement fields with valid values.'; $msgType = 'error';
+            } elseif ($act === 'add_achievement' && $userModel->addAchievement($title, $description, $conditionType, $conditionValue)) {
+                $userModel->syncAllPlayerAchievements();
+                $message = 'Achievement added!';
+            } elseif ($act === 'edit_achievement' && $userModel->updateAchievement($aid, $title, $description, $conditionType, $conditionValue)) {
+                $userModel->syncAllPlayerAchievements();
+                $message = 'Achievement updated!';
+            } else {
+                $message = 'Failed to save achievement.'; $msgType = 'error';
+            }
+        }
+
+        if ($act === 'delete_achievement') {
+            $aid = (int)($_POST['achievement_id'] ?? 0);
+            $result = $userModel->deleteAchievement($aid);
+            $message = $result ? 'Achievement deleted.' : 'Failed to delete achievement.';
+            $msgType = $result ? 'success' : 'error';
+        }
+
+        if ($act === 'add_rank' || $act === 'edit_rank') {
+            $rankId = (int)($_POST['rank_id'] ?? 0);
+            $rankName = trim($_POST['rank_name'] ?? '');
+            $minXp = (int)($_POST['min_xp'] ?? 0);
+            $maxXpRaw = trim($_POST['max_xp'] ?? '');
+            $maxXp = $maxXpRaw === '' ? null : (int)$maxXpRaw;
+            $medal = trim($_POST['medal'] ?? 'Bronze');
+
+            if ($rankName === '' || $minXp < 0 || ($maxXp !== null && $maxXp < $minXp) || $medal === '') {
+                $message = 'Fill in all rank fields with valid values.'; $msgType = 'error';
+            } elseif ($act === 'add_rank' && $userModel->addRank($rankName, $minXp, $maxXp, $medal)) {
+                $message = 'Rank added!';
+            } elseif ($act === 'edit_rank' && $userModel->updateRank($rankId, $rankName, $minXp, $maxXp, $medal)) {
+                $message = 'Rank updated!';
+            } else {
+                $message = 'Failed to save rank. Rank names must be unique.'; $msgType = 'error';
+            }
+        }
+
+        if ($act === 'delete_rank') {
+            $rankId = (int)($_POST['rank_id'] ?? 0);
+            $result = $userModel->deleteRank($rankId);
+            $message = $result ? 'Rank deleted.' : 'Failed to delete rank.';
+            $msgType = $result ? 'success' : 'error';
+        }
     }
 }
 
 $players   = $userModel->getAllPlayers();
 $questions = $questionModel->getAllWithChoiceCount();
+$achievements = $userModel->getAllAchievements();
+$ranks = $userModel->getAllRanks();
 $stats     = $userModel->getStats();
 ?>
 <!DOCTYPE html>
@@ -157,6 +217,8 @@ $stats     = $userModel->getStats();
         <li><a href="#" class="nav-link active" data-tab="overview"><span class="nav-icon">📊</span> Overview</a></li>
         <li><a href="#" class="nav-link" data-tab="players"><span class="nav-icon">👥</span> Players</a></li>
         <li><a href="#" class="nav-link" data-tab="questions"><span class="nav-icon">❓</span> Questions</a></li>
+        <li><a href="#" class="nav-link" data-tab="achievements"><span class="nav-icon">🏅</span> Achievements</a></li>
+        <li><a href="#" class="nav-link" data-tab="ranks"><span class="nav-icon">R</span> Ranks</a></li>
     </ul>
     <p class="nav-section-label">Account</p>
     <ul class="nav-menu">
@@ -170,6 +232,7 @@ $stats     = $userModel->getStats();
             <button type="submit">🚪 Sign Out</button>
         </form>
     </div>
+
 </div>
 
 <!-- Main Content -->
@@ -192,6 +255,8 @@ $stats     = $userModel->getStats();
         <button class="tab-btn active" data-tab="overview">📊 Overview</button>
         <button class="tab-btn" data-tab="players">👥 Players</button>
         <button class="tab-btn" data-tab="questions">❓ Questions</button>
+        <button class="tab-btn" data-tab="achievements">🏅 Achievements</button>
+        <button class="tab-btn" data-tab="ranks">R Ranks</button>
     </div>
 
     <!-- ── Overview ── -->
@@ -354,9 +419,152 @@ $stats     = $userModel->getStats();
             <?php endif; ?>
         </div>
     </div>
+    <div class="tab-panel" id="tab-achievements">
+        <div class="form-card" style="margin-bottom:24px">
+            <h3>Add New Achievement</h3>
+            <form method="POST" id="addAchievementForm">
+                <input type="hidden" name="admin_action" value="add_achievement">
+                <?= csrf_field() ?>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input class="form-control" type="text" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Condition</label>
+                        <select class="form-control" name="condition_type" required>
+                            <option value="quiz_count">Quizzes played</option>
+                            <option value="total_xp">Total XP</option>
+                            <option value="best_score">Best score</option>
+                            <option value="perfect_quiz_count">Perfect quizzes</option>
+                            <option value="current_streak">Current daily streak</option>
+                            <option value="max_streak">Best daily streak</option>
+                            <option value="easy_quiz_count">Easy quizzes completed</option>
+                            <option value="medium_quiz_count">Medium quizzes completed</option>
+                            <option value="hard_quiz_count">Hard quizzes completed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Needed Value</label>
+                        <input class="form-control" type="number" min="1" name="condition_value" value="1" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="grid-column:span 2">
+                        <label>Description</label>
+                        <input class="form-control" type="text" name="description" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="padding:12px 28px">Add Achievement</button>
+            </form>
+        </div>
+
+        <div class="table-card">
+            <div class="table-header">
+                <h3>All Achievements (<?= count($achievements) ?>)</h3>
+                <input class="search-input" type="text" placeholder="Search achievements..."
+                       oninput="filterTable('achievementTable', this.value)">
+            </div>
+            <?php if (empty($achievements)): ?>
+            <div class="empty-state"><div class="empty-icon">A</div><p>No achievements yet. Add one above!</p></div>
+            <?php else: ?>
+            <table id="achievementTable">
+                <thead><tr><th>#</th><th>Title</th><th>Description</th><th>Condition</th><th>Value</th><th>Actions</th></tr></thead>
+                <tbody>
+                <?php foreach ($achievements as $i => $achievement): ?>
+                <tr>
+                    <td style="color:var(--text-muted)"><?= $i+1 ?></td>
+                    <td><strong><?= htmlspecialchars($achievement['title']) ?></strong></td>
+                    <td style="max-width:320px;word-break:break-word;color:var(--text-muted)"><?= htmlspecialchars($achievement['description']) ?></td>
+                    <td><span class="badge badge-player"><?= htmlspecialchars(str_replace('_', ' ', $achievement['condition_type'])) ?></span></td>
+                    <td><?= (int)$achievement['condition_value'] ?></td>
+                    <td style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px">
+                        <button type="button" class="btn btn-primary"
+                                onclick='openAchievementModal(<?= json_encode($achievement, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Edit</button>
+                        <form method="POST" style="display:inline" onsubmit="return confirmDeleteAchievement(event)">
+                            <input type="hidden" name="admin_action" value="delete_achievement">
+                            <input type="hidden" name="achievement_id" value="<?= (int)$achievement['achievement_id'] ?>">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="tab-panel" id="tab-ranks">
+        <div class="form-card" style="margin-bottom:24px">
+            <h3>Add New Rank</h3>
+            <form method="POST" id="addRankForm">
+                <input type="hidden" name="admin_action" value="add_rank">
+                <?= csrf_field() ?>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Rank Name</label>
+                        <input class="form-control" type="text" name="rank_name" placeholder="e.g. Elite Debugger" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Minimum XP</label>
+                        <input class="form-control" type="number" min="0" name="min_xp" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Maximum XP</label>
+                        <input class="form-control" type="number" min="0" name="max_xp" placeholder="Leave blank for highest rank">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Medal</label>
+                        <input class="form-control" type="text" name="medal" value="Bronze" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="padding:12px 28px">Add Rank</button>
+            </form>
+        </div>
+
+        <div class="table-card">
+            <div class="table-header">
+                <h3>All Ranks (<?= count($ranks) ?>)</h3>
+                <input class="search-input" type="text" placeholder="Search ranks..."
+                       oninput="filterTable('rankTable', this.value)">
+            </div>
+            <?php if (empty($ranks)): ?>
+            <div class="empty-state"><div class="empty-icon">🏆</div><p>No ranks yet. Add one above!</p></div>
+            <?php else: ?>
+            <table id="rankTable">
+                <thead><tr><th>#</th><th>Name</th><th>Min XP</th><th>Max XP</th><th>Medal</th><th>Actions</th></tr></thead>
+                <tbody>
+                <?php foreach ($ranks as $i => $rankRow): ?>
+                <tr>
+                    <td style="color:var(--text-muted)"><?= $i+1 ?></td>
+                    <td><strong><?= htmlspecialchars($rankRow['rank_name']) ?></strong></td>
+                    <td><?= (int)$rankRow['min_xp'] ?></td>
+                    <td><?= $rankRow['max_xp'] === null ? 'No limit' : (int)$rankRow['max_xp'] ?></td>
+                    <td><span class="badge badge-player"><?= htmlspecialchars($rankRow['medal']) ?></span></td>
+                    <td style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px">
+                        <button type="button" class="btn btn-primary"
+                                onclick='openRankModal(<?= json_encode($rankRow, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Edit</button>
+                        <form method="POST" style="display:inline" onsubmit="return confirmDeleteRank(event)">
+                            <input type="hidden" name="admin_action" value="delete_rank">
+                            <input type="hidden" name="rank_id" value="<?= (int)$rankRow['rank_id'] ?>">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
+        </div>
+    </div>
 </div>
 
-<!-- ── Edit Question Modal ── -->
+<!-- Edit Question Modal ── -->
 <div class="modal-overlay" id="editModal">
     <div class="modal-box">
         <button class="modal-close" onclick="closeEditModal()">✕</button>
@@ -403,6 +611,80 @@ $stats     = $userModel->getStats();
     </div>
 </div>
 
+<div class="modal-overlay" id="achievementModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeAchievementModal()">x</button>
+        <h3>Edit Achievement</h3>
+        <form method="POST" id="editAchievementForm">
+            <input type="hidden" name="admin_action" value="edit_achievement">
+            <input type="hidden" name="achievement_id" id="edit_achievement_id">
+            <?= csrf_field() ?>
+
+            <div class="form-group">
+                <label>Title</label>
+                <input class="form-control" type="text" id="edit_achievement_title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input class="form-control" type="text" id="edit_achievement_description" name="description" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Condition</label>
+                    <select class="form-control" id="edit_achievement_condition_type" name="condition_type" required>
+                        <option value="quiz_count">Quizzes played</option>
+                        <option value="total_xp">Total XP</option>
+                        <option value="best_score">Best score</option>
+                        <option value="perfect_quiz_count">Perfect quizzes</option>
+                        <option value="current_streak">Current daily streak</option>
+                        <option value="max_streak">Best daily streak</option>
+                        <option value="easy_quiz_count">Easy quizzes completed</option>
+                        <option value="medium_quiz_count">Medium quizzes completed</option>
+                        <option value="hard_quiz_count">Hard quizzes completed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Needed Value</label>
+                    <input class="form-control" type="number" min="1" id="edit_achievement_condition_value" name="condition_value" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="padding:12px 28px;margin-top:8px">Save Achievement</button>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="rankModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeRankModal()">x</button>
+        <h3>Edit Rank</h3>
+        <form method="POST" id="editRankForm">
+            <input type="hidden" name="admin_action" value="edit_rank">
+            <input type="hidden" name="rank_id" id="edit_rank_id">
+            <?= csrf_field() ?>
+
+            <div class="form-group">
+                <label>Rank Name</label>
+                <input class="form-control" type="text" id="edit_rank_name" name="rank_name" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Minimum XP</label>
+                    <input class="form-control" type="number" min="0" id="edit_rank_min_xp" name="min_xp" required>
+                </div>
+                <div class="form-group">
+                    <label>Maximum XP</label>
+                    <input class="form-control" type="number" min="0" id="edit_rank_max_xp" name="max_xp" placeholder="Leave blank for highest rank">
+                </div>
+                <div class="form-group">
+                    <label>Medal</label>
+                    <input class="form-control" type="text" id="edit_rank_medal" name="medal" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="padding:12px 28px;margin-top:8px">Save Rank</button>
+        </form>
+    </div>
+</div>
+
 <script src="../assets/js/global.js"></script>
 <script src="../assets/js/admin.js"></script>
 <?php if ($message): ?>
@@ -422,3 +704,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <?php endif; ?>
 </body>
 </html>
+
+
+
+

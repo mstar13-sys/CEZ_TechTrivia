@@ -16,6 +16,7 @@ $total        = (int)($_SESSION['quiz_total']  ?? 0);
 $lives        = (int)($_SESSION['quiz_lives']  ?? 0);
 $wrongAnswers = $_SESSION['quiz_wrong_answers'] ?? [];
 $xpEarned     = $score * 10;
+$unlockedAchievements = $_SESSION['unlocked_achievements'] ?? [];
 $pct          = $total > 0 ? round(($score / $total) * 100) : 0;
 
 // Choose a rating
@@ -29,7 +30,7 @@ $quizCategory = $_SESSION["quiz_category"] ?? "";
 $quizDifficulty = $_SESSION["quiz_difficulty"] ?? "";
 unset($_SESSION["quiz_questions"], $_SESSION["quiz_index"], $_SESSION["quiz_score"],
       $_SESSION['quiz_lives'],     $_SESSION['quiz_total'],  $_SESSION['quiz_active'],
-      $_SESSION['quiz_wrong_answers']);
+      $_SESSION['quiz_wrong_answers'], $_SESSION['unlocked_achievements']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -68,6 +69,18 @@ unset($_SESSION["quiz_questions"], $_SESSION["quiz_index"], $_SESSION["quiz_scor
             </div>
         </div>
 
+        <?php if (!empty($unlockedAchievements)): ?>
+        <div class="wrong-list">
+            <h3>Achievements Unlocked</h3>
+            <?php foreach ($unlockedAchievements as $achievement): ?>
+            <div class="wrong-item">
+                <div class="q"><?= htmlspecialchars($achievement['title']) ?></div>
+                <div class="a">Badge unlocked</div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
         <?php if (!empty($wrongAnswers)): ?>
         <div class="wrong-list">
             <h3>❌ Review Wrong Answers (<?= count($wrongAnswers) ?>)</h3>
@@ -82,6 +95,7 @@ unset($_SESSION["quiz_questions"], $_SESSION["quiz_index"], $_SESSION["quiz_scor
 
         <div class="btn-group">
             <a href="../views/select_quiz.php" class="btn btn-primary">🔄 Play Again</a>
+            <a href="achievements.php" class="btn btn-outline">🏅 Achievements</a>
             <a href="leaderboard.php" class="btn btn-outline">🏆 Leaderboard</a>
             <a href="dashboard.php" class="btn btn-outline">🏠 Dashboard</a>
         </div>

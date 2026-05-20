@@ -78,7 +78,9 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT player_id, username, email, role, total_xp, level, created_at
-             FROM Player ORDER BY created_at DESC"
+             FROM Player
+             WHERE role = 'player'
+             ORDER BY created_at DESC"
         );
         $stmt->execute();
         return $stmt->fetchAll();
@@ -100,6 +102,215 @@ class User
             'total_questions' => $this->conn->query("SELECT COUNT(*) FROM Question")->fetchColumn(),
             'avg_score'       => $this->conn->query("SELECT COALESCE(AVG(total_score),0) FROM GameSession")->fetchColumn(),
         ];
+    }
+
+    // Achievements and ranks
+
+    public function getAllAchievements()
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT achievement_id, title, description, condition_type, condition_value
+             FROM Achievement
+             ORDER BY condition_type ASC, condition_value ASC, title ASC"
+        );
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function getAchievementById($achievement_id)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT achievement_id, title, description, condition_type, condition_value
+             FROM Achievement
+             WHERE achievement_id = :id"
+        );
+        $stmt->execute([':id' => (int)$achievement_id]);
+        return $stmt->fetch();
+    }
+
+    public function addAchievement($title, $description, $condition_type, $condition_value)
+    {
+        $stmt = $this->conn->prepare(
+            "INSERT INTO Achievement (title, description, condition_type, condition_value)
+             VALUES (:title, :description, :condition_type, :condition_value)"
+        );
+        return $stmt->execute([
+            ':title' => $title,
+            ':description' => $description,
+            ':condition_type' => $condition_type,
+            ':condition_value' => (int)$condition_value,
+        ]);
+    }
+
+    public function updateAchievement($achievement_id, $title, $description, $condition_type, $condition_value)
+    {
+        $stmt = $this->conn->prepare(
+            "UPDATE Achievement
+             SET title = :title,
+                 description = :description,
+                 condition_type = :condition_type,
+                 condition_value = :condition_value
+             WHERE achievement_id = :id"
+        );
+        return $stmt->execute([
+            ':title' => $title,
+            ':description' => $description,
+            ':condition_type' => $condition_type,
+            ':condition_value' => (int)$condition_value,
+            ':id' => (int)$achievement_id,
+        ]);
+    }
+
+    public function deleteAchievement($achievement_id)
+    {
+        $this->conn->beginTransaction();
+        try {
+            $this->conn->prepare("DELETE FROM PlayerAchievement WHERE achievement_id = :id")
+                ->execute([':id' => (int)$achievement_id]);
+            $result = $this->conn->prepare("DELETE FROM Achievement WHERE achievement_id = :id")
+                ->execute([':id' => (int)$achievement_id]);
+            $this->conn->commit();
+            return $result;
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            return false;
+        }
+    }
+
+    public function getPlayerAchievements($player_id)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT a.achievement_id, a.title, a.description, a.condition_type, a.condition_value,
+                    pa.date_unlocked,
+                    CASE WHEN pa.player_achievement_id IS NULL THEN 0 ELSE 1 END AS unlocked
+             FROM Achievement a
+             LEFT JOIN PlayerAchievement pa
+                    ON pa.achievement_id = a.achievement_id
+                   AND pa.player_id = :pid
+             ORDER BY unlocked DESC, a.condition_type ASC, a.condition_value ASC, a.title ASC"
+        );
+        $stmt->execute([':pid' => (int)$player_id]);
+        return $stmt->fetchAll();
+    }
+
+    public function getAchievementSummary($player_id)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT
+                (SELECT COUNT(*) FROM Achievement) AS total_achievements,
+                (SELECT COUNT(*) FROM PlayerAchievement WHERE player_id = :pid) AS unlocked_achievements"
+        );
+        $stmt->execute([':pid' => (int)$player_id]);
+        return $stmt->fetch();
+    }
+
+    public function getAllRanks()
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT rank_id, rank_name, min_xp, max_xp, medal
+             FROM `Rank`
+             ORDER BY min_xp ASC"
+        );
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function getRankById($rank_id)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT rank_id, rank_name, min_xp, max_xp, medal
+             FROM `Rank`
+             WHERE rank_id = :id"
+        );
+        $stmt->execute([':id' => (int)$rank_id]);
+        return $stmt->fetch();
+    }
+
+    public function addRank($rank_name, $min_xp, $max_xp, $medal)
+    {
+        $stmt = $this->conn->prepare(
+            "INSERT INTO `Rank` (rank_name, min_xp, max_xp, medal)
+             VALUES (:rank_name, :min_xp, :max_xp, :medal)"
+        );
+        return $stmt->execute([
+            ':rank_name' => $rank_name,
+            ':min_xp' => (int)$min_xp,
+            ':max_xp' => $max_xp === null ? null : (int)$max_xp,
+            ':medal' => $medal,
+        ]);
+    }
+
+    public function updateRank($rank_id, $rank_name, $min_xp, $max_xp, $medal)
+    {
+        $stmt = $this->conn->prepare(
+            "UPDATE `Rank`
+             SET rank_name = :rank_name,
+                 min_xp = :min_xp,
+                 max_xp = :max_xp,
+                 medal = :medal
+             WHERE rank_id = :id"
+        );
+        return $stmt->execute([
+            ':rank_name' => $rank_name,
+            ':min_xp' => (int)$min_xp,
+            ':max_xp' => $max_xp === null ? null : (int)$max_xp,
+            ':medal' => $medal,
+            ':id' => (int)$rank_id,
+        ]);
+    }
+
+    public function deleteRank($rank_id)
+    {
+        $stmt = $this->conn->prepare("DELETE FROM `Rank` WHERE rank_id = :id");
+        return $stmt->execute([':id' => (int)$rank_id]);
+    }
+
+    public function getRankForXp($xp)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT rank_id, rank_name, min_xp, max_xp, medal
+             FROM `Rank`
+             WHERE :xp_min >= min_xp AND (max_xp IS NULL OR :xp_max <= max_xp)
+             ORDER BY min_xp DESC
+             LIMIT 1"
+        );
+        $stmt->execute([':xp_min' => (int)$xp, ':xp_max' => (int)$xp]);
+        $rank = $stmt->fetch();
+        return $rank ?: [
+            'rank_name' => 'Rookie',
+            'min_xp' => 0,
+            'max_xp' => 499,
+            'medal' => 'Bronze',
+        ];
+    }
+
+    public function getNextRankForXp($xp)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT rank_id, rank_name, min_xp, max_xp, medal
+             FROM `Rank`
+             WHERE min_xp > :xp
+             ORDER BY min_xp ASC
+             LIMIT 1"
+        );
+        $stmt->execute([':xp' => (int)$xp]);
+        return $stmt->fetch();
+    }
+
+    public function syncPlayerAchievements($player_id)
+    {
+        return $this->unlockQualifiedAchievements((int)$player_id);
+    }
+
+    public function syncAllPlayerAchievements()
+    {
+        $stmt = $this->conn->prepare("SELECT player_id FROM Player WHERE role = 'player'");
+        $stmt->execute();
+        $totalUnlocked = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $playerId) {
+            $totalUnlocked += count($this->syncPlayerAchievements((int)$playerId));
+        }
+        return $totalUnlocked;
     }
 
     // ── Admin: Questions ──────────────────────────────────────
@@ -360,28 +571,42 @@ class User
 
     public function saveGameSession($player_id, $score, $xp, $category = null, $difficulty = null)
     {
-        $stmt = $this->conn->prepare(
-            "INSERT INTO GameSession (player_id, total_score, xp_earned, category, difficulty)
-             VALUES (:pid, :score, :xp, :cat, :diff)"
-        );
-        $stmt->execute([
-            ':pid'   => $player_id,
-            ':score' => $score,
-            ':xp'    => $xp,
-            ':cat'   => $category,
-            ':diff'  => $difficulty,
-        ]);
-        $session_id = $this->conn->lastInsertId();
+        $this->conn->beginTransaction();
+        try {
+            $stmt = $this->conn->prepare(
+                "INSERT INTO GameSession (player_id, total_score, xp_earned, category, difficulty)
+                 VALUES (:pid, :score, :xp, :cat, :diff)"
+            );
+            $stmt->execute([
+                ':pid'   => $player_id,
+                ':score' => $score,
+                ':xp'    => $xp,
+                ':cat'   => $category,
+                ':diff'  => $difficulty,
+            ]);
+            $session_id = $this->conn->lastInsertId();
 
-        $stmt2 = $this->conn->prepare(
-            "UPDATE Player
-             SET total_xp = total_xp + :xp,
-                 level    = GREATEST(1, FLOOR((total_xp + :xp) / 100) + 1)
-             WHERE player_id = :pid"
-        );
-        $stmt2->execute([':xp' => $xp, ':pid' => $player_id]);
+            $this->updateDailyStreak((int)$player_id);
 
-        return $session_id;
+            $stmt2 = $this->conn->prepare(
+                "UPDATE Player
+                 SET total_xp = total_xp + :xp,
+                     level    = GREATEST(1, FLOOR((total_xp + :xp) / 100) + 1)
+                 WHERE player_id = :pid"
+            );
+            $stmt2->execute([':xp' => $xp, ':pid' => $player_id]);
+            $this->conn->commit();
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            return ['session_id' => null, 'unlocked' => []];
+        }
+
+        $unlocked = $this->unlockQualifiedAchievements((int)$player_id);
+
+        return [
+            'session_id' => $session_id,
+            'unlocked' => $unlocked,
+        ];
     }
 
     public function getPlayerStats($player_id)
@@ -390,14 +615,183 @@ class User
             "SELECT p.username, p.total_xp, p.level,
                     COUNT(gs.session_id) AS games_played,
                     COALESCE(AVG(gs.total_score), 0) AS avg_score,
-                    COALESCE(MAX(gs.total_score), 0) AS best_score
+                    COALESCE(MAX(gs.total_score), 0) AS best_score,
+                    COALESCE(s.current_streak, 0) AS current_streak,
+                    COALESCE(s.max_streak, 0) AS max_streak
              FROM Player p
              LEFT JOIN GameSession gs ON p.player_id = gs.player_id
+             LEFT JOIN Streak s ON p.player_id = s.player_id
              WHERE p.player_id = :pid
              GROUP BY p.player_id"
         );
         $stmt->execute([':pid' => $player_id]);
         return $stmt->fetch();
+    }
+
+    private function updateDailyStreak($player_id)
+    {
+        $stmt = $this->conn->prepare("SELECT current_streak, max_streak, last_played_date FROM Streak WHERE player_id = :pid");
+        $stmt->execute([':pid' => $player_id]);
+        $streak = $stmt->fetch();
+
+        $today = date('Y-m-d');
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
+
+        if (!$streak) {
+            $stmt = $this->conn->prepare(
+                "INSERT INTO Streak (player_id, current_streak, max_streak, last_played_date)
+                 VALUES (:pid, 1, 1, :today)"
+            );
+            $stmt->execute([':pid' => $player_id, ':today' => $today]);
+            return;
+        }
+
+        if ($streak['last_played_date'] === $today) {
+            return;
+        }
+
+        $current = ($streak['last_played_date'] === $yesterday) ? ((int)$streak['current_streak'] + 1) : 1;
+        $max = max((int)$streak['max_streak'], $current);
+
+        $stmt = $this->conn->prepare(
+            "UPDATE Streak
+             SET current_streak = :current_streak,
+                 max_streak = :max_streak,
+                 last_played_date = :today
+             WHERE player_id = :pid"
+        );
+        $stmt->execute([
+            ':current_streak' => $current,
+            ':max_streak' => $max,
+            ':today' => $today,
+            ':pid' => $player_id,
+        ]);
+    }
+
+    private function unlockQualifiedAchievements($player_id)
+    {
+        $achievements = $this->getPlayerAchievements($player_id);
+        $stats = $this->getAchievementProgressStats($player_id);
+        $unlocked = [];
+
+        foreach ($achievements as $achievement) {
+            if ((int)$achievement['unlocked'] === 1) {
+                continue;
+            }
+
+            $conditionType = $achievement['condition_type'];
+            $needed = (int)$achievement['condition_value'];
+            $current = (int)($stats[$conditionType] ?? 0);
+
+            if ($current < $needed) {
+                continue;
+            }
+
+            $this->conn->beginTransaction();
+            try {
+                $stmt = $this->conn->prepare(
+                    "INSERT INTO PlayerAchievement (player_id, achievement_id)
+                     SELECT :pid_insert, :aid_insert
+                     WHERE NOT EXISTS (
+                         SELECT 1 FROM PlayerAchievement
+                         WHERE player_id = :pid_check AND achievement_id = :aid_check
+                     )"
+                );
+                $stmt->execute([
+                    ':pid_insert' => $player_id,
+                    ':aid_insert' => (int)$achievement['achievement_id'],
+                    ':pid_check' => $player_id,
+                    ':aid_check' => (int)$achievement['achievement_id'],
+                ]);
+
+                $this->conn->commit();
+                if ($stmt->rowCount() > 0) {
+                    $unlocked[] = $achievement;
+                }
+            } catch (Exception $e) {
+                $this->conn->rollBack();
+            }
+        }
+
+        return $unlocked;
+    }
+
+    public function getAchievementProgressStats($player_id)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT
+                COUNT(*) AS quiz_count,
+                COALESCE(MAX(total_score), 0) AS best_score,
+                SUM(CASE WHEN total_score >= 10 THEN 1 ELSE 0 END) AS perfect_quiz_count,
+                SUM(CASE WHEN difficulty = 'easy' THEN 1 ELSE 0 END) AS easy_quiz_count,
+                SUM(CASE WHEN difficulty = 'medium' THEN 1 ELSE 0 END) AS medium_quiz_count,
+                SUM(CASE WHEN difficulty = 'hard' THEN 1 ELSE 0 END) AS hard_quiz_count
+             FROM GameSession
+             WHERE player_id = :pid"
+        );
+        $stmt->execute([':pid' => $player_id]);
+        $sessionStats = $stmt->fetch() ?: [];
+
+        $stmt2 = $this->conn->prepare(
+            "SELECT total_xp FROM Player WHERE player_id = :pid"
+        );
+        $stmt2->execute([':pid' => $player_id]);
+        $totalXp = (int)$stmt2->fetchColumn();
+
+        $stmt3 = $this->conn->prepare(
+            "SELECT current_streak, max_streak FROM Streak WHERE player_id = :pid"
+        );
+        $stmt3->execute([':pid' => $player_id]);
+        $streak = $stmt3->fetch() ?: ['current_streak' => 0, 'max_streak' => 0];
+        $sessionStreak = $this->calculateSessionStreaks($player_id);
+
+        return [
+            'quiz_count' => (int)($sessionStats['quiz_count'] ?? 0),
+            'total_xp' => $totalXp,
+            'best_score' => (int)($sessionStats['best_score'] ?? 0),
+            'perfect_quiz_count' => (int)($sessionStats['perfect_quiz_count'] ?? 0),
+            'current_streak' => max((int)($streak['current_streak'] ?? 0), (int)$sessionStreak['current_streak']),
+            'max_streak' => max((int)($streak['max_streak'] ?? 0), (int)$sessionStreak['max_streak']),
+            'easy_quiz_count' => (int)($sessionStats['easy_quiz_count'] ?? 0),
+            'medium_quiz_count' => (int)($sessionStats['medium_quiz_count'] ?? 0),
+            'hard_quiz_count' => (int)($sessionStats['hard_quiz_count'] ?? 0),
+        ];
+    }
+
+    private function calculateSessionStreaks($player_id)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT DISTINCT DATE(date_played) AS played_date
+             FROM GameSession
+             WHERE player_id = :pid
+             ORDER BY played_date ASC"
+        );
+        $stmt->execute([':pid' => (int)$player_id]);
+        $dates = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($dates)) {
+            return ['current_streak' => 0, 'max_streak' => 0];
+        }
+
+        $max = 1;
+        $run = 1;
+        $previous = null;
+
+        foreach ($dates as $date) {
+            if ($previous !== null) {
+                $expected = date('Y-m-d', strtotime($previous . ' +1 day'));
+                $run = ($date === $expected) ? ($run + 1) : 1;
+                $max = max($max, $run);
+            }
+            $previous = $date;
+        }
+
+        $today = date('Y-m-d');
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
+        $last = end($dates);
+        $current = ($last === $today || $last === $yesterday) ? $run : 0;
+
+        return ['current_streak' => $current, 'max_streak' => $max];
     }
 
     // ── Settings: Update Username ────────────────────────────────
