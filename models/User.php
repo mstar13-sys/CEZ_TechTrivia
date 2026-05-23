@@ -4,6 +4,13 @@ require_once __DIR__ . '/../core/Database.php';
 // ── User Model ────────────────────────────────────────────────
 class User
 {
+    private const XP_PER_LEVEL = 100;
+    private const XP_BY_DIFFICULTY = [
+        'easy' => 5,
+        'medium' => 10,
+        'hard' => 15,
+    ];
+
     private $conn;
 
     public function __construct()
@@ -18,14 +25,14 @@ class User
     {
         $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
         $stmt = $this->conn->prepare(
-            "INSERT INTO Player (username, email, password) VALUES (:username, :email, :password)"
+            "INSERT INTO player (username, email, password) VALUES (:username, :email, :password)"
         );
         return $stmt->execute([':username' => $username, ':email' => $email, ':password' => $hash]);
     }
 
     public function login($username, $password)
     {
-        $stmt = $this->conn->prepare("SELECT * FROM Player WHERE username = :username");
+        $stmt = $this->conn->prepare("SELECT * FROM player WHERE username = :username");
         $stmt->execute([':username' => $username]);
         if ($stmt->rowCount() === 1) {
             $user = $stmt->fetch();
@@ -36,7 +43,7 @@ class User
 
     public function userExists($username)
     {
-        $stmt = $this->conn->prepare("SELECT player_id FROM Player WHERE username = :username");
+        $stmt = $this->conn->prepare("SELECT player_id FROM player WHERE username = :username");
         $stmt->execute([':username' => $username]);
         return $stmt->rowCount() > 0;
     }
@@ -44,7 +51,7 @@ class User
     public function resetPasswordByUsernameEmail($username, $email, $new_password)
     {
         $stmt = $this->conn->prepare(
-            "SELECT player_id FROM Player WHERE username = :username AND email = :email"
+            "SELECT player_id FROM player WHERE username = :username AND email = :email"
         );
         $stmt->execute([':username' => $username, ':email' => $email]);
         $user = $stmt->fetch();
@@ -55,7 +62,7 @@ class User
 
         $hash = password_hash($new_password, PASSWORD_BCRYPT, ['cost' => 12]);
         $stmt = $this->conn->prepare(
-            "UPDATE Player SET password = :password WHERE player_id = :id"
+            "UPDATE player SET password = :password WHERE player_id = :id"
         );
         $result = $stmt->execute([':password' => $hash, ':id' => $user['player_id']]);
 
@@ -67,7 +74,7 @@ class User
 
     public function emailExists($email)
     {
-        $stmt = $this->conn->prepare("SELECT player_id FROM Player WHERE email = :email");
+        $stmt = $this->conn->prepare("SELECT player_id FROM player WHERE email = :email");
         $stmt->execute([':email' => $email]);
         return $stmt->rowCount() > 0;
     }
@@ -78,7 +85,7 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT player_id, username, email, role, total_xp, level, created_at
-             FROM Player
+             FROM player
              WHERE role = 'player'
              ORDER BY created_at DESC"
         );
@@ -88,7 +95,7 @@ class User
 
     public function deletePlayer($id)
     {
-        $stmt = $this->conn->prepare("DELETE FROM Player WHERE player_id = :id AND role != 'admin'");
+        $stmt = $this->conn->prepare("DELETE FROM player WHERE player_id = :id AND role != 'admin'");
         return $stmt->execute([':id' => (int)$id]);
     }
 
@@ -97,10 +104,10 @@ class User
     public function getStats()
     {
         return [
-            'total_players'   => $this->conn->query("SELECT COUNT(*) FROM Player WHERE role='player'")->fetchColumn(),
-            'total_sessions'  => $this->conn->query("SELECT COUNT(*) FROM GameSession")->fetchColumn(),
-            'total_questions' => $this->conn->query("SELECT COUNT(*) FROM Question")->fetchColumn(),
-            'avg_score'       => $this->conn->query("SELECT COALESCE(AVG(total_score),0) FROM GameSession")->fetchColumn(),
+            'total_players'   => $this->conn->query("SELECT COUNT(*) FROM player WHERE role='player'")->fetchColumn(),
+            'total_sessions'  => $this->conn->query("SELECT COUNT(*) FROM gamesession")->fetchColumn(),
+            'total_questions' => $this->conn->query("SELECT COUNT(*) FROM question")->fetchColumn(),
+            'avg_score'       => $this->conn->query("SELECT COALESCE(AVG(total_score),0) FROM gamesession")->fetchColumn(),
         ];
     }
 
@@ -110,7 +117,7 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT achievement_id, title, description, condition_type, condition_value
-             FROM Achievement
+             FROM achievement
              ORDER BY condition_type ASC, condition_value ASC, title ASC"
         );
         $stmt->execute();
@@ -121,7 +128,7 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT achievement_id, title, description, condition_type, condition_value
-             FROM Achievement
+             FROM achievement
              WHERE achievement_id = :id"
         );
         $stmt->execute([':id' => (int)$achievement_id]);
@@ -131,7 +138,7 @@ class User
     public function addAchievement($title, $description, $condition_type, $condition_value)
     {
         $stmt = $this->conn->prepare(
-            "INSERT INTO Achievement (title, description, condition_type, condition_value)
+            "INSERT INTO achievement (title, description, condition_type, condition_value)
              VALUES (:title, :description, :condition_type, :condition_value)"
         );
         return $stmt->execute([
@@ -145,7 +152,7 @@ class User
     public function updateAchievement($achievement_id, $title, $description, $condition_type, $condition_value)
     {
         $stmt = $this->conn->prepare(
-            "UPDATE Achievement
+            "UPDATE achievement
              SET title = :title,
                  description = :description,
                  condition_type = :condition_type,
@@ -165,9 +172,9 @@ class User
     {
         $this->conn->beginTransaction();
         try {
-            $this->conn->prepare("DELETE FROM PlayerAchievement WHERE achievement_id = :id")
+            $this->conn->prepare("DELETE FROM playerachievement WHERE achievement_id = :id")
                 ->execute([':id' => (int)$achievement_id]);
-            $result = $this->conn->prepare("DELETE FROM Achievement WHERE achievement_id = :id")
+            $result = $this->conn->prepare("DELETE FROM achievement WHERE achievement_id = :id")
                 ->execute([':id' => (int)$achievement_id]);
             $this->conn->commit();
             return $result;
@@ -183,8 +190,8 @@ class User
             "SELECT a.achievement_id, a.title, a.description, a.condition_type, a.condition_value,
                     pa.date_unlocked,
                     CASE WHEN pa.player_achievement_id IS NULL THEN 0 ELSE 1 END AS unlocked
-             FROM Achievement a
-             LEFT JOIN PlayerAchievement pa
+             FROM achievement a
+             LEFT JOIN playerachievement pa
                     ON pa.achievement_id = a.achievement_id
                    AND pa.player_id = :pid
              ORDER BY unlocked DESC, a.condition_type ASC, a.condition_value ASC, a.title ASC"
@@ -197,8 +204,8 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT
-                (SELECT COUNT(*) FROM Achievement) AS total_achievements,
-                (SELECT COUNT(*) FROM PlayerAchievement WHERE player_id = :pid) AS unlocked_achievements"
+                (SELECT COUNT(*) FROM achievement) AS total_achievements,
+                (SELECT COUNT(*) FROM playerachievement WHERE player_id = :pid) AS unlocked_achievements"
         );
         $stmt->execute([':pid' => (int)$player_id]);
         return $stmt->fetch();
@@ -208,7 +215,7 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT rank_id, rank_name, min_xp, max_xp, medal
-             FROM `Rank`
+             FROM `rank`
              ORDER BY min_xp ASC"
         );
         $stmt->execute();
@@ -219,7 +226,7 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT rank_id, rank_name, min_xp, max_xp, medal
-             FROM `Rank`
+             FROM `rank`
              WHERE rank_id = :id"
         );
         $stmt->execute([':id' => (int)$rank_id]);
@@ -229,7 +236,7 @@ class User
     public function addRank($rank_name, $min_xp, $max_xp, $medal)
     {
         $stmt = $this->conn->prepare(
-            "INSERT INTO `Rank` (rank_name, min_xp, max_xp, medal)
+            "INSERT INTO `rank` (rank_name, min_xp, max_xp, medal)
              VALUES (:rank_name, :min_xp, :max_xp, :medal)"
         );
         return $stmt->execute([
@@ -243,7 +250,7 @@ class User
     public function updateRank($rank_id, $rank_name, $min_xp, $max_xp, $medal)
     {
         $stmt = $this->conn->prepare(
-            "UPDATE `Rank`
+            "UPDATE `rank`
              SET rank_name = :rank_name,
                  min_xp = :min_xp,
                  max_xp = :max_xp,
@@ -261,7 +268,7 @@ class User
 
     public function deleteRank($rank_id)
     {
-        $stmt = $this->conn->prepare("DELETE FROM `Rank` WHERE rank_id = :id");
+        $stmt = $this->conn->prepare("DELETE FROM `rank` WHERE rank_id = :id");
         return $stmt->execute([':id' => (int)$rank_id]);
     }
 
@@ -269,7 +276,7 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT rank_id, rank_name, min_xp, max_xp, medal
-             FROM `Rank`
+             FROM `rank`
              WHERE :xp_min >= min_xp AND (max_xp IS NULL OR :xp_max <= max_xp)
              ORDER BY min_xp DESC
              LIMIT 1"
@@ -288,13 +295,29 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT rank_id, rank_name, min_xp, max_xp, medal
-             FROM `Rank`
+             FROM `rank`
              WHERE min_xp > :xp
              ORDER BY min_xp ASC
              LIMIT 1"
         );
         $stmt->execute([':xp' => (int)$xp]);
         return $stmt->fetch();
+    }
+
+    public function getXpPerCorrectAnswer($difficulty)
+    {
+        $difficulty = strtolower((string)$difficulty);
+        return self::XP_BY_DIFFICULTY[$difficulty] ?? self::XP_BY_DIFFICULTY['medium'];
+    }
+
+    public function calculateXpForScore($score, $difficulty)
+    {
+        return max(0, (int)$score) * $this->getXpPerCorrectAnswer($difficulty);
+    }
+
+    public function calculateLevelForXp($totalXp)
+    {
+        return max(1, intdiv(max(0, (int)$totalXp), self::XP_PER_LEVEL) + 1);
     }
 
     public function syncPlayerAchievements($player_id)
@@ -304,7 +327,7 @@ class User
 
     public function syncAllPlayerAchievements()
     {
-        $stmt = $this->conn->prepare("SELECT player_id FROM Player WHERE role = 'player'");
+        $stmt = $this->conn->prepare("SELECT player_id FROM player WHERE role = 'player'");
         $stmt->execute();
         $totalUnlocked = 0;
         foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $playerId) {
@@ -319,8 +342,8 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT q.*, COUNT(c.choice_id) AS choice_count
-             FROM Question q
-             LEFT JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             LEFT JOIN choice c ON q.question_id = c.question_id
              GROUP BY q.question_id
              ORDER BY q.created_at DESC"
         );
@@ -330,12 +353,12 @@ class User
 
     public function getQuestionWithChoices($question_id)
     {
-        $stmt = $this->conn->prepare("SELECT * FROM Question WHERE question_id = :id");
+        $stmt = $this->conn->prepare("SELECT * FROM question WHERE question_id = :id");
         $stmt->execute([':id' => $question_id]);
         $question = $stmt->fetch();
         if (!$question) return null;
 
-        $stmt2 = $this->conn->prepare("SELECT * FROM Choice WHERE question_id = :id");
+        $stmt2 = $this->conn->prepare("SELECT * FROM choice WHERE question_id = :id");
         $stmt2->execute([':id' => $question_id]);
         $question['choices'] = $stmt2->fetchAll();
         return $question;
@@ -346,13 +369,13 @@ class User
         $this->conn->beginTransaction();
         try {
             $stmt = $this->conn->prepare(
-                "INSERT INTO Question (question_text, difficulty, category) VALUES (:text, :diff, :cat)"
+                "INSERT INTO question (question_text, difficulty, category) VALUES (:text, :diff, :cat)"
             );
             $stmt->execute([':text' => $text, ':diff' => $difficulty, ':cat' => $category]);
             $qid = $this->conn->lastInsertId();
             foreach ($choices as $i => $choice) {
                 $stmt2 = $this->conn->prepare(
-                    "INSERT INTO Choice (question_id, choice_text, is_correct) VALUES (:qid, :text, :correct)"
+                    "INSERT INTO choice (question_id, choice_text, is_correct) VALUES (:qid, :text, :correct)"
                 );
                 $stmt2->execute([':qid' => $qid, ':text' => $choice, ':correct' => ($i == $correct_index ? 1 : 0)]);
             }
@@ -369,13 +392,13 @@ class User
         $this->conn->beginTransaction();
         try {
             $stmt = $this->conn->prepare(
-                "UPDATE Question SET question_text=:text, difficulty=:diff, category=:cat WHERE question_id=:id"
+                "UPDATE question SET question_text=:text, difficulty=:diff, category=:cat WHERE question_id=:id"
             );
             $stmt->execute([':text' => $text, ':diff' => $difficulty, ':cat' => $category, ':id' => $id]);
-            $this->conn->prepare("DELETE FROM Choice WHERE question_id = :id")->execute([':id' => $id]);
+            $this->conn->prepare("DELETE FROM choice WHERE question_id = :id")->execute([':id' => $id]);
             foreach ($choices as $i => $choice) {
                 $stmt2 = $this->conn->prepare(
-                    "INSERT INTO Choice (question_id, choice_text, is_correct) VALUES (:qid, :text, :correct)"
+                    "INSERT INTO choice (question_id, choice_text, is_correct) VALUES (:qid, :text, :correct)"
                 );
                 $stmt2->execute([':qid' => $id, ':text' => $choice, ':correct' => ($i == $correct_index ? 1 : 0)]);
             }
@@ -389,7 +412,7 @@ class User
 
     public function deleteQuestion($id)
     {
-        $stmt = $this->conn->prepare("DELETE FROM Question WHERE question_id = :id");
+        $stmt = $this->conn->prepare("DELETE FROM question WHERE question_id = :id");
         return $stmt->execute([':id' => (int)$id]);
     }
 
@@ -400,8 +423,8 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT DISTINCT q.category
-             FROM Question q
-             INNER JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             INNER JOIN choice c ON q.question_id = c.question_id
              ORDER BY q.category ASC"
         );
         $stmt->execute();
@@ -413,8 +436,8 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT DISTINCT q.difficulty
-             FROM Question q
-             INNER JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             INNER JOIN choice c ON q.question_id = c.question_id
              WHERE q.category = :cat
              ORDER BY FIELD(q.difficulty,'easy','medium','hard')"
         );
@@ -427,8 +450,8 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT COUNT(DISTINCT q.question_id)
-             FROM Question q
-             INNER JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             INNER JOIN choice c ON q.question_id = c.question_id
              WHERE q.category = :cat AND q.difficulty = :diff"
         );
         $stmt->execute([':cat' => $category, ':diff' => $difficulty]);
@@ -444,8 +467,8 @@ class User
             "SELECT p.username, p.total_xp, p.level,
                     COUNT(gs.session_id) AS games_played,
                     COALESCE(MAX(gs.total_score), 0) AS best_score
-             FROM Player p
-             LEFT JOIN GameSession gs ON p.player_id = gs.player_id
+             FROM player p
+             LEFT JOIN gamesession gs ON p.player_id = gs.player_id
              WHERE p.role = 'player'
              GROUP BY p.player_id
              ORDER BY p.total_xp DESC, best_score DESC
@@ -478,8 +501,8 @@ class User
                     COUNT(gs.session_id)             AS games_played,
                     COALESCE(MAX(gs.total_score), 0) AS best_score,
                     COALESCE(SUM(gs.xp_earned), 0)   AS filter_xp
-             FROM Player p
-             INNER JOIN GameSession gs ON p.player_id = gs.player_id
+             FROM player p
+             INNER JOIN gamesession gs ON p.player_id = gs.player_id
              WHERE {$whereSQL}
              GROUP BY p.player_id
              ORDER BY filter_xp DESC, best_score DESC
@@ -497,7 +520,7 @@ class User
     public function getLeaderboardCategories()
     {
         $stmt = $this->conn->prepare(
-            "SELECT DISTINCT category FROM GameSession
+            "SELECT DISTINCT category FROM gamesession
              WHERE category IS NOT NULL AND category != ''
              ORDER BY category ASC"
         );
@@ -527,8 +550,8 @@ class User
         $stmt = $this->conn->prepare(
             "SELECT q.question_id, q.question_text, q.difficulty, q.category,
                     c.choice_id, c.choice_text, c.is_correct
-             FROM Question q
-             JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             JOIN choice c ON q.question_id = c.question_id
              WHERE {$whereSQL}
              ORDER BY RAND()"
         );
@@ -571,10 +594,16 @@ class User
 
     public function saveGameSession($player_id, $score, $xp, $category = null, $difficulty = null)
     {
+        $player_id = (int)$player_id;
+        $score = max(0, (int)$score);
+        $xp = max(0, (int)$xp);
+        $newTotalXp = null;
+        $newLevel = null;
+
         $this->conn->beginTransaction();
         try {
             $stmt = $this->conn->prepare(
-                "INSERT INTO GameSession (player_id, total_score, xp_earned, category, difficulty)
+                "INSERT INTO gamesession (player_id, total_score, xp_earned, category, difficulty)
                  VALUES (:pid, :score, :xp, :cat, :diff)"
             );
             $stmt->execute([
@@ -586,26 +615,40 @@ class User
             ]);
             $session_id = $this->conn->lastInsertId();
 
-            $this->updateDailyStreak((int)$player_id);
+            $this->updateDailyStreak($player_id);
 
             $stmt2 = $this->conn->prepare(
-                "UPDATE Player
-                 SET total_xp = total_xp + :xp,
-                     level    = GREATEST(1, FLOOR((total_xp + :xp) / 100) + 1)
+                "UPDATE player
+                 SET total_xp = GREATEST(0, COALESCE(total_xp, 0) + :xp)
                  WHERE player_id = :pid"
             );
             $stmt2->execute([':xp' => $xp, ':pid' => $player_id]);
+
+            $stmt3 = $this->conn->prepare(
+                "SELECT total_xp FROM player WHERE player_id = :pid"
+            );
+            $stmt3->execute([':pid' => $player_id]);
+            $newTotalXp = (int)$stmt3->fetchColumn();
+            $newLevel = $this->calculateLevelForXp($newTotalXp);
+
+            $stmt4 = $this->conn->prepare(
+                "UPDATE player SET level = :level WHERE player_id = :pid"
+            );
+            $stmt4->execute([':level' => $newLevel, ':pid' => $player_id]);
+
             $this->conn->commit();
         } catch (Exception $e) {
             $this->conn->rollBack();
-            return ['session_id' => null, 'unlocked' => []];
+            return ['session_id' => null, 'unlocked' => [], 'total_xp' => null, 'level' => null];
         }
 
-        $unlocked = $this->unlockQualifiedAchievements((int)$player_id);
+        $unlocked = $this->unlockQualifiedAchievements($player_id);
 
         return [
             'session_id' => $session_id,
             'unlocked' => $unlocked,
+            'total_xp' => $newTotalXp,
+            'level' => $newLevel,
         ];
     }
 
@@ -618,9 +661,9 @@ class User
                     COALESCE(MAX(gs.total_score), 0) AS best_score,
                     COALESCE(s.current_streak, 0) AS current_streak,
                     COALESCE(s.max_streak, 0) AS max_streak
-             FROM Player p
-             LEFT JOIN GameSession gs ON p.player_id = gs.player_id
-             LEFT JOIN Streak s ON p.player_id = s.player_id
+             FROM player p
+             LEFT JOIN gamesession gs ON p.player_id = gs.player_id
+             LEFT JOIN streak s ON p.player_id = s.player_id
              WHERE p.player_id = :pid
              GROUP BY p.player_id"
         );
@@ -630,7 +673,7 @@ class User
 
     private function updateDailyStreak($player_id)
     {
-        $stmt = $this->conn->prepare("SELECT current_streak, max_streak, last_played_date FROM Streak WHERE player_id = :pid");
+        $stmt = $this->conn->prepare("SELECT current_streak, max_streak, last_played_date FROM streak WHERE player_id = :pid");
         $stmt->execute([':pid' => $player_id]);
         $streak = $stmt->fetch();
 
@@ -639,7 +682,7 @@ class User
 
         if (!$streak) {
             $stmt = $this->conn->prepare(
-                "INSERT INTO Streak (player_id, current_streak, max_streak, last_played_date)
+                "INSERT INTO streak (player_id, current_streak, max_streak, last_played_date)
                  VALUES (:pid, 1, 1, :today)"
             );
             $stmt->execute([':pid' => $player_id, ':today' => $today]);
@@ -654,7 +697,7 @@ class User
         $max = max((int)$streak['max_streak'], $current);
 
         $stmt = $this->conn->prepare(
-            "UPDATE Streak
+            "UPDATE streak
              SET current_streak = :current_streak,
                  max_streak = :max_streak,
                  last_played_date = :today
@@ -690,10 +733,10 @@ class User
             $this->conn->beginTransaction();
             try {
                 $stmt = $this->conn->prepare(
-                    "INSERT INTO PlayerAchievement (player_id, achievement_id)
+                    "INSERT INTO playerachievement (player_id, achievement_id)
                      SELECT :pid_insert, :aid_insert
                      WHERE NOT EXISTS (
-                         SELECT 1 FROM PlayerAchievement
+                         SELECT 1 FROM playerachievement
                          WHERE player_id = :pid_check AND achievement_id = :aid_check
                      )"
                 );
@@ -726,20 +769,20 @@ class User
                 SUM(CASE WHEN difficulty = 'easy' THEN 1 ELSE 0 END) AS easy_quiz_count,
                 SUM(CASE WHEN difficulty = 'medium' THEN 1 ELSE 0 END) AS medium_quiz_count,
                 SUM(CASE WHEN difficulty = 'hard' THEN 1 ELSE 0 END) AS hard_quiz_count
-             FROM GameSession
+             FROM gamesession
              WHERE player_id = :pid"
         );
         $stmt->execute([':pid' => $player_id]);
         $sessionStats = $stmt->fetch() ?: [];
 
         $stmt2 = $this->conn->prepare(
-            "SELECT total_xp FROM Player WHERE player_id = :pid"
+            "SELECT total_xp FROM player WHERE player_id = :pid"
         );
         $stmt2->execute([':pid' => $player_id]);
         $totalXp = (int)$stmt2->fetchColumn();
 
         $stmt3 = $this->conn->prepare(
-            "SELECT current_streak, max_streak FROM Streak WHERE player_id = :pid"
+            "SELECT current_streak, max_streak FROM streak WHERE player_id = :pid"
         );
         $stmt3->execute([':pid' => $player_id]);
         $streak = $stmt3->fetch() ?: ['current_streak' => 0, 'max_streak' => 0];
@@ -762,7 +805,7 @@ class User
     {
         $stmt = $this->conn->prepare(
             "SELECT DISTINCT DATE(date_played) AS played_date
-             FROM GameSession
+             FROM gamesession
              WHERE player_id = :pid
              ORDER BY played_date ASC"
         );
@@ -802,7 +845,7 @@ class User
             return ['success' => false, 'message' => 'Username already taken.'];
         }
         $stmt = $this->conn->prepare(
-            "UPDATE Player SET username = :username WHERE player_id = :id"
+            "UPDATE player SET username = :username WHERE player_id = :id"
         );
         $result = $stmt->execute([':username' => $new_username, ':id' => $player_id]);
         return ['success' => $result, 'message' => $result ? 'Username updated successfully!' : 'Failed to update username.'];
@@ -812,7 +855,7 @@ class User
 
     public function updatePassword($player_id, $current_password, $new_password)
     {
-        $stmt = $this->conn->prepare("SELECT password FROM Player WHERE player_id = :id");
+        $stmt = $this->conn->prepare("SELECT password FROM player WHERE player_id = :id");
         $stmt->execute([':id' => $player_id]);
         $user = $stmt->fetch();
 
@@ -826,7 +869,7 @@ class User
 
         $hash = password_hash($new_password, PASSWORD_BCRYPT, ['cost' => 12]);
         $stmt = $this->conn->prepare(
-            "UPDATE Player SET password = :password WHERE player_id = :id"
+            "UPDATE player SET password = :password WHERE player_id = :id"
         );
         $result = $stmt->execute([':password' => $hash, ':id' => $player_id]);
         return ['success' => $result, 'message' => $result ? 'Password updated successfully!' : 'Failed to update password.'];
@@ -836,7 +879,7 @@ class User
 
     public function getUserById($player_id)
     {
-        $stmt = $this->conn->prepare("SELECT player_id, username, email, role, total_xp, level, created_at FROM Player WHERE player_id = :id");
+        $stmt = $this->conn->prepare("SELECT player_id, username, email, role, total_xp, level, created_at FROM player WHERE player_id = :id");
         $stmt->execute([':id' => $player_id]);
         return $stmt->fetch();
     }

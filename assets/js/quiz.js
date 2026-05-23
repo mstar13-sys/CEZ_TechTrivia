@@ -98,15 +98,22 @@
     }
 
     function startTimer() {
+        if (timerInterval || timeLeft <= 0) return;
         updateTimerUI();
         timerInterval = setInterval(function() {
             timeLeft--;
             updateTimerUI();
             if (timeLeft <= 0) {
-                clearInterval(timerInterval);
+                stopTimer();
                 onTimeout();
             }
         }, 1000);
+    }
+
+    function stopTimer() {
+        if (!timerInterval) return;
+        clearInterval(timerInterval);
+        timerInterval = null;
     }
 
     function updateTimerUI() {
@@ -171,7 +178,7 @@
 
     // ── Answer selection ──────────────────────────────────────
     window.selectAnswer = function (btn) {
-        if (timerInterval) clearInterval(timerInterval);
+        stopTimer();
         playQuizSound(quizSounds.finalAnswer);
 
         document.querySelectorAll('.choice-btn').forEach(function(b) {
@@ -187,6 +194,55 @@
             var form = document.getElementById('answerForm');
             if (form) form.submit();
         }, 700);
+    };
+
+    window.confirmQuizQuit = function (event, link) {
+        if (event) event.preventDefault();
+
+        var targetUrl = link && link.href ? link.href : '../views/select_quiz.php';
+        var wasTimerRunning = !!timerInterval;
+        stopTimer();
+
+        function leaveQuiz() {
+            window.location.href = targetUrl;
+        }
+
+        function resumeQuiz() {
+            if (wasTimerRunning && timeLeft > 0) startTimer();
+        }
+
+        if (typeof Swal === 'undefined') {
+            if (window.confirm('Quit the quiz? Progress will be lost.')) {
+                leaveQuiz();
+            } else {
+                resumeQuiz();
+            }
+            return false;
+        }
+
+        var isLightMode = document.body.classList.contains('light-mode');
+
+        Swal.fire({
+            icon: 'warning',
+            title: 'Quit the quiz?',
+            text: 'Your current progress will be lost.',
+            background: isLightMode ? '#ffffff' : '#1a1830',
+            color: isLightMode ? '#111827' : '#f1f0ff',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#2563eb',
+            confirmButtonText: 'Yes, quit',
+            cancelButtonText: 'Keep playing',
+            reverseButtons: true
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                leaveQuiz();
+            } else {
+                resumeQuiz();
+            }
+        });
+
+        return false;
     };
 
 })();

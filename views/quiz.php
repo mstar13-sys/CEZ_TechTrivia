@@ -37,6 +37,7 @@ $feedback = $_SESSION['quiz_feedback'] ?? null;
 <link rel="icon" type="image/png" href="../assets/image/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/quiz.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -150,7 +151,7 @@ $feedback = $_SESSION['quiz_feedback'] ?? null;
     <div class="score-bar">
         <span>Score: <strong><?= $score ?></strong> / <?= $total ?></span>
         <a href="../views/select_quiz.php"
-           onclick="return confirm('Quit the quiz? Progress will be lost.')">
+           onclick="return confirmQuizQuit(event, this)">
             ✕ Quit
         </a>
     </div>

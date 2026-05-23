@@ -723,7 +723,7 @@ $trophyImages = [
             {
                 initials: 'KZ',
                 name: 'Kent Lester Zabala',
-                role: 'Backend / API Programmer',
+                role: 'Backend Programmer',
                 desc: 'Focuses on system architecture, backend logic, and full-stack development of TechTrivia.',
                 img: 'assets/image/kent.png',
                 linkedin: 'https://www.linkedin.com/in/kent-lester-zabala-0730803b8',

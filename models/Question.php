@@ -5,7 +5,7 @@
 require_once __DIR__ . '/Model.php';
 
 class Question extends Model {
-    protected $table = 'Question';
+    protected $table = 'question';
 
     protected function getPrimaryKey() {
         return 'question_id';
@@ -17,8 +17,8 @@ class Question extends Model {
     public function getAllWithChoiceCount() {
         $stmt = $this->conn->prepare(
             "SELECT q.*, COUNT(c.choice_id) AS choice_count
-             FROM Question q
-             LEFT JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             LEFT JOIN choice c ON q.question_id = c.question_id
              GROUP BY q.question_id
              ORDER BY q.created_at DESC"
         );
@@ -33,7 +33,7 @@ class Question extends Model {
         $question = $this->find($question_id);
         if (!$question) return null;
 
-        $stmt = $this->conn->prepare("SELECT * FROM Choice WHERE question_id = :id");
+        $stmt = $this->conn->prepare("SELECT * FROM choice WHERE question_id = :id");
         $stmt->execute([':id' => $question_id]);
         $question['choices'] = $stmt->fetchAll();
         return $question;
@@ -46,14 +46,14 @@ class Question extends Model {
         $this->beginTransaction();
         try {
             $stmt = $this->conn->prepare(
-                "INSERT INTO Question (question_text, difficulty, category) VALUES (:text, :diff, :cat)"
+                "INSERT INTO question (question_text, difficulty, category) VALUES (:text, :diff, :cat)"
             );
             $stmt->execute([':text' => $text, ':diff' => $difficulty, ':cat' => $category]);
             $question_id = $this->lastInsertId();
 
             foreach ($choices as $i => $choice) {
                 $stmt2 = $this->conn->prepare(
-                    "INSERT INTO Choice (question_id, choice_text, is_correct) VALUES (:qid, :text, :correct)"
+                    "INSERT INTO choice (question_id, choice_text, is_correct) VALUES (:qid, :text, :correct)"
                 );
                 $stmt2->execute([
                     ':qid' => $question_id,
@@ -77,15 +77,15 @@ class Question extends Model {
         $this->beginTransaction();
         try {
             $stmt = $this->conn->prepare(
-                "UPDATE Question SET question_text=:text, difficulty=:diff, category=:cat WHERE question_id=:id"
+                "UPDATE question SET question_text=:text, difficulty=:diff, category=:cat WHERE question_id=:id"
             );
             $stmt->execute([':text' => $text, ':diff' => $difficulty, ':cat' => $category, ':id' => $id]);
 
-            $this->conn->prepare("DELETE FROM Choice WHERE question_id = :id")->execute([':id' => $id]);
+            $this->conn->prepare("DELETE FROM choice WHERE question_id = :id")->execute([':id' => $id]);
 
             foreach ($choices as $i => $choice) {
                 $stmt2 = $this->conn->prepare(
-                    "INSERT INTO Choice (question_id, choice_text, is_correct) VALUES (:qid, :text, :correct)"
+                    "INSERT INTO choice (question_id, choice_text, is_correct) VALUES (:qid, :text, :correct)"
                 );
                 $stmt2->execute([
                     ':qid' => $id,
@@ -108,8 +108,8 @@ class Question extends Model {
     public function getCategories() {
         $stmt = $this->conn->prepare(
             "SELECT DISTINCT q.category
-             FROM Question q
-             INNER JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             INNER JOIN choice c ON q.question_id = c.question_id
              ORDER BY q.category ASC"
         );
         $stmt->execute();
@@ -122,8 +122,8 @@ class Question extends Model {
     public function getDifficultiesByCategory($category) {
         $stmt = $this->conn->prepare(
             "SELECT DISTINCT q.difficulty
-             FROM Question q
-             INNER JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             INNER JOIN choice c ON q.question_id = c.question_id
              WHERE q.category = :cat
              ORDER BY FIELD(q.difficulty,'easy','medium','hard')"
         );
@@ -137,8 +137,8 @@ class Question extends Model {
     public function countByCategoryAndDifficulty($category, $difficulty) {
         $stmt = $this->conn->prepare(
             "SELECT COUNT(DISTINCT q.question_id)
-             FROM Question q
-             INNER JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             INNER JOIN choice c ON q.question_id = c.question_id
              WHERE q.category = :cat AND q.difficulty = :diff"
         );
         $stmt->execute([':cat' => $category, ':diff' => $difficulty]);
@@ -166,8 +166,8 @@ class Question extends Model {
         $stmt = $this->conn->prepare(
             "SELECT q.question_id, q.question_text, q.difficulty, q.category,
                     c.choice_id, c.choice_text, c.is_correct
-             FROM Question q
-             JOIN Choice c ON q.question_id = c.question_id
+             FROM question q
+             JOIN choice c ON q.question_id = c.question_id
              WHERE {$whereSQL}
              ORDER BY RAND()"
         );
@@ -206,7 +206,7 @@ class Question extends Model {
      * Get total count of questions
      */
     public function getTotalCount() {
-        $stmt = $this->conn->prepare("SELECT COUNT(*) FROM Question");
+        $stmt = $this->conn->prepare("SELECT COUNT(*) FROM question");
         $stmt->execute();
         return (int)$stmt->fetchColumn();
     }

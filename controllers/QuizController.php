@@ -167,14 +167,21 @@ switch ($action) {
         $_SESSION['quiz_index']++;
 
         $score      = (int)$_SESSION['quiz_score'];
-        $xp         = $score * 10;
         $category   = $_SESSION['quiz_category']   ?? null;
         $difficulty = $_SESSION['quiz_difficulty'] ?? null;
+        $xp         = $userModel->calculateXpForScore($score, $difficulty);
 
         // Game over: out of lives
         if ($_SESSION['quiz_lives'] <= 0) {
             $saveResult = $userModel->saveGameSession($_SESSION['user_id'], $score, $xp, $category, $difficulty);
             $_SESSION['unlocked_achievements'] = $saveResult['unlocked'] ?? [];
+            $_SESSION['quiz_xp_earned'] = $xp;
+            if ($saveResult['total_xp'] !== null) {
+                $_SESSION['total_xp'] = $saveResult['total_xp'];
+            }
+            if ($saveResult['level'] !== null) {
+                $_SESSION['level'] = $saveResult['level'];
+            }
             $_SESSION['quiz_active'] = false;
             redirect_to('../views/game_over.php');
         }
@@ -183,7 +190,13 @@ switch ($action) {
         if ($_SESSION['quiz_index'] >= $_SESSION['quiz_total']) {
             $saveResult = $userModel->saveGameSession($_SESSION['user_id'], $score, $xp, $category, $difficulty);
             $_SESSION['unlocked_achievements'] = $saveResult['unlocked'] ?? [];
-            $_SESSION['total_xp']    = ($_SESSION['total_xp'] ?? 0) + $xp;
+            $_SESSION['quiz_xp_earned'] = $xp;
+            if ($saveResult['total_xp'] !== null) {
+                $_SESSION['total_xp'] = $saveResult['total_xp'];
+            }
+            if ($saveResult['level'] !== null) {
+                $_SESSION['level'] = $saveResult['level'];
+            }
             $_SESSION['quiz_active'] = false;
             redirect_to('../views/results.php');
         }

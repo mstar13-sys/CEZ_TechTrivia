@@ -15,7 +15,12 @@ $score        = (int)($_SESSION['quiz_score']  ?? 0);
 $total        = (int)($_SESSION['quiz_total']  ?? 0);
 $lives        = (int)($_SESSION['quiz_lives']  ?? 0);
 $wrongAnswers = $_SESSION['quiz_wrong_answers'] ?? [];
-$xpEarned     = $score * 10;
+$quizCategory = $_SESSION["quiz_category"] ?? "";
+$quizDifficulty = $_SESSION["quiz_difficulty"] ?? "";
+$xpByDifficulty = ['easy' => 5, 'medium' => 10, 'hard' => 15];
+$xpEarned     = isset($_SESSION['quiz_xp_earned'])
+    ? (int)$_SESSION['quiz_xp_earned']
+    : $score * ($xpByDifficulty[$quizDifficulty] ?? 10);
 $unlockedAchievements = $_SESSION['unlocked_achievements'] ?? [];
 $pct          = $total > 0 ? round(($score / $total) * 100) : 0;
 
@@ -26,11 +31,9 @@ elseif ($pct >= 50)  { $rating = '👍 Not bad!';     $color = '#f59e0b'; }
 else                  { $rating = '📚 Keep trying!'; $color = '#ef4444'; }
 
 // Clear quiz session data after reading it
-$quizCategory = $_SESSION["quiz_category"] ?? "";
-$quizDifficulty = $_SESSION["quiz_difficulty"] ?? "";
 unset($_SESSION["quiz_questions"], $_SESSION["quiz_index"], $_SESSION["quiz_score"],
       $_SESSION['quiz_lives'],     $_SESSION['quiz_total'],  $_SESSION['quiz_active'],
-      $_SESSION['quiz_wrong_answers'], $_SESSION['unlocked_achievements']);
+      $_SESSION['quiz_wrong_answers'], $_SESSION['unlocked_achievements'], $_SESSION['quiz_xp_earned']);
 ?>
 <!DOCTYPE html>
 <html lang="en">

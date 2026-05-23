@@ -13,14 +13,18 @@ if (!empty($_SESSION['quiz_active'])) {
 $score        = (int)($_SESSION['quiz_score']  ?? 0);
 $total        = (int)($_SESSION['quiz_total']  ?? 0);
 $wrongAnswers = $_SESSION['quiz_wrong_answers'] ?? [];
-$xpEarned     = $score * 10;
+$quizDifficulty = $_SESSION["quiz_difficulty"] ?? "";
+$xpByDifficulty = ['easy' => 5, 'medium' => 10, 'hard' => 15];
+$xpEarned     = isset($_SESSION['quiz_xp_earned'])
+    ? (int)$_SESSION['quiz_xp_earned']
+    : $score * ($xpByDifficulty[$quizDifficulty] ?? 10);
 $answered     = (int)($_SESSION['quiz_index']  ?? 0);
 $unlockedAchievements = $_SESSION['unlocked_achievements'] ?? [];
 
 // Clear quiz session data
 unset($_SESSION['quiz_questions'], $_SESSION['quiz_index'], $_SESSION['quiz_score'],
       $_SESSION['quiz_lives'],     $_SESSION['quiz_total'],  $_SESSION['quiz_active'],
-      $_SESSION['quiz_wrong_answers'], $_SESSION['unlocked_achievements']);
+      $_SESSION['quiz_wrong_answers'], $_SESSION['unlocked_achievements'], $_SESSION['quiz_xp_earned']);
 ?>
 <!DOCTYPE html>
 <html lang="en">

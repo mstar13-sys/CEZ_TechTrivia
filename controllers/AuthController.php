@@ -24,9 +24,9 @@ class AuthController {
             redirect_to('../views/register.php');
         }
 
-        $username        = trim($_POST['username'] ?? '');
-        $email           = trim($_POST['email']    ?? '');
-        $password        = $_POST['password']        ?? '';
+        $username = trim($_POST['username'] ?? '');
+        $email = trim($_POST['email']?? '');
+        $password = $_POST['password']?? '';
         $confirmPassword = $_POST['confirmPassword'] ?? '';
 
         // Server-side validation (client side already checked, but never trust client)
@@ -96,6 +96,7 @@ class AuthController {
             $_SESSION['username']  = $userData['username'];
             $_SESSION['role']      = $userData['role'] ?? 'player';
             $_SESSION['total_xp']  = $userData['total_xp'] ?? 0;
+            $_SESSION['level']     = $userData['level'] ?? 1;
             $_SESSION['logged_in'] = true;
 
             if ($_SESSION['role'] === 'admin') {
