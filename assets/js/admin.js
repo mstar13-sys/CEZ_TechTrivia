@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateThemeButton(theme) {
         const icon = themeToggleBtn?.querySelector('.theme-icon');
         if (icon) {
-            icon.textContent = theme === 'dark' ? '🌙' : '☀️';
+            icon.innerHTML = theme === 'dark' ? '&#127769;' : '&#9728;';
         }
     }
 
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector(`.tab-btn[data-tab="${link.dataset.tab}"]`)?.click();
         });
     });
-    const requestedTab = new URLSearchParams(window.location.search).get('tab') || window.location.hash.replace('#', '');
+    const requestedTab = window.adminInitialTab || window.location.hash.replace('#', '') || new URLSearchParams(window.location.search).get('tab') || '';
     if (requestedTab) {
         document.querySelector(`.tab-btn[data-tab="${requestedTab}"]`)?.click();
     }
@@ -94,17 +94,137 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ── Delete player ─────────────────────────────────────────
+    window.sortPlayerTable = function(sortBy) {
+        const tbody = document.querySelector('#playerTable tbody');
+        if (!tbody) return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const numberValue = (row, key) => Number(row.dataset[key] || 0);
+        const nameValue = row => (row.dataset.name || '').toLowerCase();
+
+        rows.sort((a, b) => {
+            if (sortBy === 'name_asc') return nameValue(a).localeCompare(nameValue(b));
+            if (sortBy === 'created_asc') return numberValue(a, 'created') - numberValue(b, 'created');
+            if (sortBy === 'level_desc') return numberValue(b, 'level') - numberValue(a, 'level') || numberValue(b, 'xp') - numberValue(a, 'xp');
+            if (sortBy === 'score_desc') return numberValue(b, 'score') - numberValue(a, 'score') || numberValue(b, 'xp') - numberValue(a, 'xp');
+            if (sortBy === 'xp_desc') return numberValue(b, 'xp') - numberValue(a, 'xp') || numberValue(b, 'score') - numberValue(a, 'score');
+            if (sortBy === 'ranking') return numberValue(b, 'xp') - numberValue(a, 'xp') || numberValue(b, 'score') - numberValue(a, 'score') || numberValue(b, 'level') - numberValue(a, 'level');
+            return numberValue(b, 'created') - numberValue(a, 'created');
+        });
+
+        rows.forEach((row, index) => {
+            const numberCell = row.querySelector('td');
+            if (numberCell) numberCell.textContent = index + 1;
+            tbody.appendChild(row);
+        });
+    };
+
+    window.sortQuestionTable = function(sortBy) {
+        const tbody = document.querySelector('#questionTable tbody');
+        if (!tbody) return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const difficultyOrder = { easy: 1, medium: 2, hard: 3 };
+        const textValue = (row, key) => (row.dataset[key] || '').toLowerCase();
+        const numberValue = (row, key) => Number(row.dataset[key] || 0);
+
+        rows.sort((a, b) => {
+            if (sortBy === 'difficulty') {
+                return (difficultyOrder[textValue(a, 'difficulty')] || 99) - (difficultyOrder[textValue(b, 'difficulty')] || 99)
+                    || textValue(a, 'category').localeCompare(textValue(b, 'category'))
+                    || textValue(a, 'question').localeCompare(textValue(b, 'question'));
+            }
+            if (sortBy === 'category_asc') {
+                return textValue(a, 'category').localeCompare(textValue(b, 'category'))
+                    || textValue(a, 'question').localeCompare(textValue(b, 'question'));
+            }
+            if (sortBy === 'question_asc') return textValue(a, 'question').localeCompare(textValue(b, 'question'));
+            if (sortBy === 'choices_desc') return numberValue(b, 'choices') - numberValue(a, 'choices') || numberValue(b, 'created') - numberValue(a, 'created');
+            return numberValue(b, 'created') - numberValue(a, 'created');
+        });
+
+        rows.forEach((row, index) => {
+            const numberCell = row.querySelector('td');
+            if (numberCell) numberCell.textContent = index + 1;
+            tbody.appendChild(row);
+        });
+    };
+
+    function initCategoryPicker(picker) {
+        const valueInput = picker.querySelector('[data-category-value]');
+        const existingSelect = picker.querySelector('[data-category-existing]');
+        const newInput = picker.querySelector('[data-category-new]');
+        const modeButtons = Array.from(picker.querySelectorAll('[data-category-mode]'));
+        const hasExistingOptions = existingSelect && existingSelect.options.length > 1;
+
+        function setMode(mode) {
+            if (!hasExistingOptions && mode === 'existing') {
+                mode = 'new';
+            }
+
+            modeButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.categoryMode === mode));
+            existingSelect.hidden = mode !== 'existing';
+            newInput.hidden = mode !== 'new';
+            existingSelect.disabled = mode !== 'existing' || !hasExistingOptions;
+            newInput.disabled = mode !== 'new';
+            updateValue();
+            if (mode === 'new') {
+                newInput.focus();
+            }
+        }
+
+        function updateValue() {
+            valueInput.value = newInput.hidden ? existingSelect.value.trim() : newInput.value.trim();
+        }
+
+        picker.setCategory = function(category) {
+            const normalized = (category || '').trim();
+            const matchingOption = Array.from(existingSelect.options).find(option => option.value.toLowerCase() === normalized.toLowerCase());
+            if (matchingOption && matchingOption.value !== '') {
+                existingSelect.value = matchingOption.value;
+                newInput.value = '';
+                setMode('existing');
+            } else {
+                existingSelect.value = '';
+                newInput.value = normalized;
+                setMode('new');
+            }
+            updateValue();
+        };
+
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => setMode(btn.dataset.categoryMode));
+        });
+        existingSelect.addEventListener('change', updateValue);
+        newInput.addEventListener('input', updateValue);
+
+        setMode(hasExistingOptions ? 'existing' : 'new');
+    }
+
+    document.querySelectorAll('[data-category-picker]').forEach(initCategoryPicker);
+
     window.confirmDelete = function(e, username) {
         e.preventDefault();
         const form = e.target;
         Swal.fire({
             icon: 'warning', title: 'Delete Player?',
-            html: `Delete <strong>${username}</strong>? This cannot be undone.`,
+            text: `Move "${username}" to deleted records?`,
+            input: 'textarea',
+            inputLabel: 'Reason',
+            inputPlaceholder: 'Enter the reason for deleting this account...',
+            inputAttributes: { maxlength: 500 },
+            inputValidator: value => !value || !value.trim() ? 'Please enter a reason.' : undefined,
             background: '#1a1830', color: '#f1f0ff',
             showCancelButton: true,
             confirmButtonColor: '#ef4444', cancelButtonColor: '#4f46e5',
-            confirmButtonText: 'Yes, delete', cancelButtonText: 'Cancel',
-        }).then(r => { if (r.isConfirmed) form.submit(); });
+            confirmButtonText: 'Move to deleted', cancelButtonText: 'Cancel',
+        }).then(r => {
+            if (r.isConfirmed) {
+                const reasonInput = form.querySelector('input[name="delete_reason"]');
+                if (reasonInput) reasonInput.value = r.value.trim();
+                form.submit();
+            }
+        });
         return false;
     };
 
@@ -114,12 +234,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = e.target;
         Swal.fire({
             icon: 'warning', title: 'Delete Question?',
-            text: 'This will also delete all its choices.',
+            text: 'This question will be hidden until an admin restores it.',
+            input: 'textarea',
+            inputLabel: 'Reason',
+            inputPlaceholder: 'Enter the reason for deleting this question...',
+            inputAttributes: { maxlength: 500 },
+            inputValidator: value => !value || !value.trim() ? 'Please enter a reason.' : undefined,
             background: '#1a1830', color: '#f1f0ff',
             showCancelButton: true,
             confirmButtonColor: '#ef4444', cancelButtonColor: '#4f46e5',
-            confirmButtonText: 'Delete', cancelButtonText: 'Cancel',
-        }).then(r => { if (r.isConfirmed) form.submit(); });
+            confirmButtonText: 'Move to deleted', cancelButtonText: 'Cancel',
+        }).then(r => {
+            if (r.isConfirmed) {
+                const reasonInput = form.querySelector('input[name="delete_reason"]');
+                if (reasonInput) reasonInput.value = r.value.trim();
+                form.submit();
+            }
+        });
         return false;
     };
 
@@ -171,10 +302,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addForm) {
         addForm.addEventListener('submit', function(e) {
             const text    = this.question_text.value.trim();
+            const category = this.category.value.trim();
             const choices = ['choice_0','choice_1','choice_2','choice_3'].map(n => this[n]?.value.trim());
-            if (!text || choices.some(c => !c)) {
+            if (!text || !category || choices.some(c => !c)) {
                 e.preventDefault();
-                Swal.fire({ icon:'warning', title:'Incomplete', text:'Fill in the question and all 4 choices.', background:'#1a1830', color:'#f1f0ff', confirmButtonColor:'#4f46e5' });
+                Swal.fire({ icon:'warning', title:'Incomplete', text:'Fill in the question, category, and all 4 choices.', background:'#1a1830', color:'#f1f0ff', confirmButtonColor:'#4f46e5' });
             }
         });
     }
@@ -193,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('edit_question_id').value        = data.question_id;
                 document.getElementById('edit_question_text').value       = data.question_text;
                 document.getElementById('edit_difficulty').value          = data.difficulty;
-                document.getElementById('edit_category').value            = data.category;
+                document.getElementById('editCategoryPicker')?.setCategory(data.category);
 
                 data.choices.forEach((choice, i) => {
                     const input = document.getElementById(`edit_choice_${i}`);
@@ -257,10 +389,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editForm) {
         editForm.addEventListener('submit', function(e) {
             const text    = this.question_text.value.trim();
+            const category = this.category.value.trim();
             const choices = ['choice_0','choice_1','choice_2','choice_3'].map(n => this[n]?.value.trim());
-            if (!text || choices.some(c => !c)) {
+            if (!text || !category || choices.some(c => !c)) {
                 e.preventDefault();
-                Swal.fire({ icon:'warning', title:'Incomplete', text:'Fill in the question and all 4 choices.', background:'#1a1830', color:'#f1f0ff', confirmButtonColor:'#4f46e5' });
+                Swal.fire({ icon:'warning', title:'Incomplete', text:'Fill in the question, category, and all 4 choices.', background:'#1a1830', color:'#f1f0ff', confirmButtonColor:'#4f46e5' });
             }
         });
     }

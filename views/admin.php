@@ -13,6 +13,28 @@ $userModel    = new User();
 $questionModel = new Question();
 $message      = null;
 $msgType      = 'success';
+$validTabs    = ['overview', 'players', 'questions', 'achievements', 'ranks'];
+$activeTab    = $_GET['tab'] ?? 'overview';
+if (!in_array($activeTab, $validTabs, true)) {
+    $activeTab = 'overview';
+}
+$maxDeleteReasonLength = 500;
+$existingQuestionCategories = $questionModel->getCategories();
+
+function resolve_question_category($category, array $existingCategories) {
+    $category = trim(preg_replace('/\s+/', ' ', (string)$category));
+    if ($category === '') {
+        return '';
+    }
+
+    foreach ($existingCategories as $existingCategory) {
+        if (strcasecmp($category, $existingCategory) === 0) {
+            return $existingCategory;
+        }
+    }
+
+    return $category;
+}
 
 // ── Handle POST actions ───────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -20,18 +42,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = 'Invalid CSRF token.'; $msgType = 'error';
     } else {
         $act = $_POST['admin_action'] ?? '';
+        $actionTabs = [
+            'delete_player' => 'players',
+            'add_question' => 'questions',
+            'edit_question' => 'questions',
+            'delete_question' => 'questions',
+            'add_achievement' => 'achievements',
+            'edit_achievement' => 'achievements',
+            'delete_achievement' => 'achievements',
+            'add_rank' => 'ranks',
+            'edit_rank' => 'ranks',
+            'delete_rank' => 'ranks',
+        ];
+        $activeTab = $actionTabs[$act] ?? $activeTab;
 
         if ($act === 'delete_player') {
             $pid = (int)($_POST['player_id'] ?? 0);
-            $result = $userModel->deletePlayer($pid);
-            $message = $result ? 'Player deleted.' : 'Cannot delete this account.';
+            $reason = normalize_delete_reason($_POST['delete_reason'] ?? '');
+            if ($reason === '') {
+                $result = false;
+                $message = 'A delete reason is required.';
+            } elseif (strlen($reason) > $maxDeleteReasonLength) {
+                $result = false;
+                $message = 'Delete reason must be 500 characters or fewer.';
+            } else {
+                $result = $userModel->deletePlayer($pid, $reason, [
+                    'id' => $_SESSION['user_id'] ?? 0,
+                    'username' => $_SESSION['username'] ?? 'Admin',
+                ]);
+                $message = $result ? 'Player moved to deleted records.' : 'Cannot delete this account.';
+            }
             $msgType = $result ? 'success' : 'error';
         }
 
         if ($act === 'add_question') {
             $text    = trim($_POST['question_text'] ?? '');
             $diff    = $_POST['difficulty'] ?? 'easy';
-            $cat     = trim($_POST['category'] ?? 'General');
+            $cat     = resolve_question_category($_POST['category'] ?? '', $existingQuestionCategories);
             $choices = [
                 trim($_POST['choice_0'] ?? ''),
                 trim($_POST['choice_1'] ?? ''),
@@ -42,6 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (empty($text) || in_array('', $choices, true)) {
                 $message = 'Fill in the question and all 4 choices.'; $msgType = 'error';
+            } elseif ($cat === '') {
+                $message = 'Choose or create a category.'; $msgType = 'error';
+            } elseif (strlen($cat) > 80) {
+                $message = 'Category must be 80 characters or fewer.'; $msgType = 'error';
             } elseif ($questionModel->add($text, $diff, $cat, $choices, $correct)) {
                 $message = 'Question added!';
             } else {
@@ -53,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $qid     = (int)($_POST['question_id'] ?? 0);
             $text    = trim($_POST['question_text'] ?? '');
             $diff    = $_POST['difficulty'] ?? 'easy';
-            $cat     = trim($_POST['category'] ?? 'General');
+            $cat     = resolve_question_category($_POST['category'] ?? '', $existingQuestionCategories);
             $choices = [
                 trim($_POST['choice_0'] ?? ''),
                 trim($_POST['choice_1'] ?? ''),
@@ -64,6 +115,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (empty($text) || in_array('', $choices, true)) {
                 $message = 'Fill in the question and all 4 choices.'; $msgType = 'error';
+            } elseif ($cat === '') {
+                $message = 'Choose or create a category.'; $msgType = 'error';
+            } elseif (strlen($cat) > 80) {
+                $message = 'Category must be 80 characters or fewer.'; $msgType = 'error';
             } elseif ($questionModel->update($qid, $text, $diff, $cat, $choices, $correct)) {
                 $message = 'Question updated!';
             } else {
@@ -73,8 +128,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($act === 'delete_question') {
             $qid     = (int)($_POST['question_id'] ?? 0);
-            $result = $questionModel->delete($qid);
-            $message = $result ? 'Question deleted.' : 'Failed to delete.';
+            $reason = normalize_delete_reason($_POST['delete_reason'] ?? '');
+            if ($reason === '') {
+                $result = false;
+                $message = 'A delete reason is required.';
+            } elseif (strlen($reason) > $maxDeleteReasonLength) {
+                $result = false;
+                $message = 'Delete reason must be 500 characters or fewer.';
+            } else {
+                $result = $questionModel->delete($qid, $reason);
+                $message = $result ? 'Question moved to deleted records.' : 'Failed to delete.';
+            }
             $msgType = $result ? 'success' : 'error';
         }
 
@@ -140,9 +204,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $players   = $userModel->getAllPlayers();
 $questions = $questionModel->getAllWithChoiceCount();
+$questionCategories = $questionModel->getCategories();
 $achievements = $userModel->getAllAchievements();
 $ranks = $userModel->getAllRanks();
 $stats     = $userModel->getStats();
+
+function admin_tab_class($tab, $activeTab) {
+    return $tab === $activeTab ? ' active' : '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -219,11 +288,12 @@ $stats     = $userModel->getStats();
         <li><a href="#" class="nav-link" data-tab="players"><span class="nav-icon">👥</span> Players</a></li>
         <li><a href="#" class="nav-link" data-tab="questions"><span class="nav-icon">❓</span> Questions</a></li>
         <li><a href="#" class="nav-link" data-tab="achievements"><span class="nav-icon">🏅</span> Achievements</a></li>
-        <li><a href="#" class="nav-link" data-tab="ranks"><span class="nav-icon">R</span> Ranks</a></li>
+        <li><a href="#" class="nav-link" data-tab="ranks"><span class="nav-icon">&#127942;</span> Ranks</a></li>
+        <li><a href="deleted.php"><span class="nav-icon">&#128465;</span> Deleted</a></li>
     </ul>
     <p class="nav-section-label">Account</p>
     <ul class="nav-menu">
-        <li><a href="admin_settings.php"><span class="nav-icon">⚙️</span> Settings</a></li>
+        <li><a href="admin_settings.php"><span class="nav-icon">&#9881;</span> Settings</a></li>
     </ul>
     <div class="sidebar-footer">
         <form class="logout-form" action="../controllers/AuthController.php" method="POST"
@@ -245,7 +315,7 @@ $stats     = $userModel->getStats();
         </div>
         <div class="header-actions">
             <button class="theme-toggle-btn" id="themeToggle" title="Toggle Theme">
-                <span class="theme-icon">🌙</span>
+                <span class="theme-icon">&#127769;</span>
             </button>
             <span style="color:var(--text-muted);font-size:13px" id="adminDate"></span>
         </div>
@@ -257,7 +327,7 @@ $stats     = $userModel->getStats();
         <button class="tab-btn" data-tab="players">👥 Players</button>
         <button class="tab-btn" data-tab="questions">❓ Questions</button>
         <button class="tab-btn" data-tab="achievements">🏅 Achievements</button>
-        <button class="tab-btn" data-tab="ranks">R Ranks</button>
+        <button class="tab-btn" data-tab="ranks">&#127942; Ranks</button>
     </div>
 
     <!-- ── Overview ── -->
@@ -298,30 +368,47 @@ $stats     = $userModel->getStats();
         <div class="table-card">
             <div class="table-header">
                 <h3>All Players (<?= count($players) ?>)</h3>
-                <input class="search-input" type="text" placeholder="🔍 Search players…"
-                       oninput="filterTable('playerTable', this.value)">
+                <div class="table-tools">
+                    <select class="search-input" id="playerSort" onchange="sortPlayerTable(this.value)">
+                        <option value="created_desc">Newest Created</option>
+                        <option value="ranking">Ranking</option>
+                        <option value="xp_desc">EXP</option>
+                        <option value="level_desc">Level</option>
+                        <option value="name_asc">Name</option>
+                        <option value="score_desc">Best Score</option>
+                        <option value="created_asc">Oldest Created</option>
+                    </select>
+                    <input class="search-input" type="text" placeholder="Search players..."
+                           oninput="filterTable('playerTable', this.value)">
+                </div>
             </div>
             <?php if (empty($players)): ?>
             <div class="empty-state"><div class="empty-icon">👥</div><p>No players yet.</p></div>
             <?php else: ?>
             <table id="playerTable">
-                <thead><tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>XP</th><th>Level</th><th>Joined</th><th>Action</th></tr></thead>
+                <thead><tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>XP</th><th>Level</th><th>Best Score</th><th>Joined</th><th>Action</th></tr></thead>
                 <tbody>
                 <?php foreach ($players as $i => $p): ?>
-                <tr>
+                <tr data-name="<?= htmlspecialchars(strtolower($p['username']), ENT_QUOTES) ?>"
+                    data-xp="<?= (int)$p['total_xp'] ?>"
+                    data-level="<?= (int)$p['level'] ?>"
+                    data-score="<?= (int)($p['best_score'] ?? 0) ?>"
+                    data-created="<?= strtotime($p['created_at']) ?: 0 ?>">
                     <td style="color:var(--text-muted)"><?= $i+1 ?></td>
                     <td><strong><?= htmlspecialchars($p['username']) ?></strong></td>
                     <td style="color:var(--text-muted);font-size:13px"><?= htmlspecialchars($p['email']) ?></td>
                     <td><span class="badge badge-<?= $p['role'] ?>"><?= ucfirst($p['role']) ?></span></td>
                     <td><?= (int)$p['total_xp'] ?></td>
                     <td><?= (int)$p['level'] ?></td>
+                    <td><?= (int)($p['best_score'] ?? 0) ?></td>
                     <td style="color:var(--text-muted);font-size:13px"><?= date('M j, Y', strtotime($p['created_at'])) ?></td>
                     <td>
                         <?php if ($p['role'] !== 'admin'): ?>
-                        <form method="POST" style="display:inline"
-                              onsubmit="return confirmDelete(event, '<?= htmlspecialchars($p['username'], ENT_QUOTES) ?>')">
+                        <form method="POST" action="admin.php?tab=players" style="display:inline"
+                              onsubmit="return confirmDelete(event, <?= htmlspecialchars(json_encode($p['username'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES) ?>)">
                             <input type="hidden" name="admin_action" value="delete_player">
                             <input type="hidden" name="player_id"   value="<?= $p['player_id'] ?>">
+                            <input type="hidden" name="delete_reason" value="">
                             <?= csrf_field() ?>
                             <button type="submit" class="btn btn-danger">🗑 Delete</button>
                         </form>
@@ -343,7 +430,7 @@ $stats     = $userModel->getStats();
         <!-- Add question form -->
         <div class="form-card" style="margin-bottom:24px">
             <h3>➕ Add New Question</h3>
-            <form method="POST" id="addQuestionForm">
+            <form method="POST" action="admin.php?tab=questions" id="addQuestionForm">
                 <input type="hidden" name="admin_action" value="add_question">
                 <?= csrf_field() ?>
                 <div class="form-group">
@@ -361,7 +448,20 @@ $stats     = $userModel->getStats();
                     </div>
                     <div class="form-group" style="grid-column:span 2">
                         <label>Category</label>
-                        <input class="form-control" type="text" name="category" placeholder="e.g. Networking, JavaScript…" value="General">
+                        <div class="category-picker" data-category-picker>
+                            <input type="hidden" name="category" data-category-value>
+                            <div class="category-mode" role="tablist" aria-label="Category mode">
+                                <button type="button" class="active" data-category-mode="existing">Existing</button>
+                                <button type="button" data-category-mode="new">New</button>
+                            </div>
+                            <select class="form-control" data-category-existing <?= empty($questionCategories) ? 'disabled' : '' ?>>
+                                <option value=""><?= empty($questionCategories) ? 'No categories yet' : 'Select category' ?></option>
+                                <?php foreach ($questionCategories as $categoryOption): ?>
+                                <option value="<?= htmlspecialchars($categoryOption) ?>"><?= htmlspecialchars($categoryOption) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <input class="form-control" type="text" data-category-new placeholder="Type a new category..." maxlength="80" autocomplete="off" hidden>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -384,8 +484,17 @@ $stats     = $userModel->getStats();
         <div class="table-card">
             <div class="table-header">
                 <h3>All Questions (<?= count($questions) ?>)</h3>
-                <input class="search-input" type="text" placeholder="🔍 Search questions…"
-                       oninput="filterTable('questionTable', this.value)">
+                <div class="table-tools">
+                    <select class="search-input" id="questionSort" onchange="sortQuestionTable(this.value)">
+                        <option value="created_desc">Newest Created</option>
+                        <option value="difficulty">Difficulty</option>
+                        <option value="category_asc">Category</option>
+                        <option value="question_asc">Question</option>
+                        <option value="choices_desc">Choices</option>
+                    </select>
+                    <input class="search-input" type="text" placeholder="Search questions..."
+                           oninput="filterTable('questionTable', this.value)">
+                </div>
             </div>
             <?php if (empty($questions)): ?>
             <div class="empty-state"><div class="empty-icon">❓</div><p>No questions yet. Add one above!</p></div>
@@ -394,7 +503,11 @@ $stats     = $userModel->getStats();
                 <thead><tr><th>#</th><th>Question</th><th>Category</th><th>Difficulty</th><th>Choices</th><th>Actions</th></tr></thead>
                 <tbody>
                 <?php foreach ($questions as $i => $q): ?>
-                <tr>
+                <tr data-question="<?= htmlspecialchars(strtolower($q['question_text']), ENT_QUOTES) ?>"
+                    data-category="<?= htmlspecialchars(strtolower($q['category']), ENT_QUOTES) ?>"
+                    data-difficulty="<?= htmlspecialchars($q['difficulty'], ENT_QUOTES) ?>"
+                    data-choices="<?= (int)$q['choice_count'] ?>"
+                    data-created="<?= strtotime($q['created_at']) ?: 0 ?>">
                     <td style="color:var(--text-muted)"><?= $i+1 ?></td>
                     <td style="max-width:300px;word-break:break-word"><?= htmlspecialchars($q['question_text']) ?></td>
                     <td style="color:var(--text-muted);font-size:13px"><?= htmlspecialchars($q['category']) ?></td>
@@ -405,10 +518,11 @@ $stats     = $userModel->getStats();
                         <button type="button" class="btn btn-primary"
                                 onclick="openEditModal(<?= $q['question_id'] ?>)">✏️ Edit</button>
                         <!-- Delete button -->
-                        <form method="POST" style="display:inline"
+                        <form method="POST" action="admin.php?tab=questions" style="display:inline"
                               onsubmit="return confirmDeleteQ(event)">
                             <input type="hidden" name="admin_action" value="delete_question">
                             <input type="hidden" name="question_id" value="<?= $q['question_id'] ?>">
+                            <input type="hidden" name="delete_reason" value="">
                             <?= csrf_field() ?>
                             <button type="submit" class="btn btn-danger">🗑 Delete</button>
                         </form>
@@ -423,7 +537,7 @@ $stats     = $userModel->getStats();
     <div class="tab-panel" id="tab-achievements">
         <div class="form-card" style="margin-bottom:24px">
             <h3>Add New Achievement</h3>
-            <form method="POST" id="addAchievementForm">
+            <form method="POST" action="admin.php?tab=achievements" id="addAchievementForm">
                 <input type="hidden" name="admin_action" value="add_achievement">
                 <?= csrf_field() ?>
                 <div class="form-row">
@@ -482,7 +596,7 @@ $stats     = $userModel->getStats();
                     <td style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px">
                         <button type="button" class="btn btn-primary"
                                 onclick='openAchievementModal(<?= json_encode($achievement, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Edit</button>
-                        <form method="POST" style="display:inline" onsubmit="return confirmDeleteAchievement(event)">
+                        <form method="POST" action="admin.php?tab=achievements" style="display:inline" onsubmit="return confirmDeleteAchievement(event)">
                             <input type="hidden" name="admin_action" value="delete_achievement">
                             <input type="hidden" name="achievement_id" value="<?= (int)$achievement['achievement_id'] ?>">
                             <?= csrf_field() ?>
@@ -500,7 +614,7 @@ $stats     = $userModel->getStats();
     <div class="tab-panel" id="tab-ranks">
         <div class="form-card" style="margin-bottom:24px">
             <h3>Add New Rank</h3>
-            <form method="POST" id="addRankForm">
+            <form method="POST" action="admin.php?tab=ranks" id="addRankForm">
                 <input type="hidden" name="admin_action" value="add_rank">
                 <?= csrf_field() ?>
                 <div class="form-row">
@@ -549,7 +663,7 @@ $stats     = $userModel->getStats();
                     <td style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px">
                         <button type="button" class="btn btn-primary"
                                 onclick='openRankModal(<?= json_encode($rankRow, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Edit</button>
-                        <form method="POST" style="display:inline" onsubmit="return confirmDeleteRank(event)">
+                        <form method="POST" action="admin.php?tab=ranks" style="display:inline" onsubmit="return confirmDeleteRank(event)">
                             <input type="hidden" name="admin_action" value="delete_rank">
                             <input type="hidden" name="rank_id" value="<?= (int)$rankRow['rank_id'] ?>">
                             <?= csrf_field() ?>
@@ -570,7 +684,7 @@ $stats     = $userModel->getStats();
     <div class="modal-box">
         <button class="modal-close" onclick="closeEditModal()">✕</button>
         <h3>✏️ Edit Question</h3>
-        <form method="POST" id="editQuestionForm">
+        <form method="POST" action="admin.php?tab=questions" id="editQuestionForm">
             <input type="hidden" name="admin_action" value="edit_question">
             <input type="hidden" name="question_id"  id="edit_question_id">
             <?= csrf_field() ?>
@@ -590,7 +704,20 @@ $stats     = $userModel->getStats();
                 </div>
                 <div class="form-group" style="grid-column:span 2">
                     <label>Category</label>
-                    <input class="form-control" type="text" id="edit_category" name="category">
+                    <div class="category-picker" data-category-picker id="editCategoryPicker">
+                        <input type="hidden" id="edit_category" name="category" data-category-value>
+                        <div class="category-mode" role="tablist" aria-label="Category mode">
+                            <button type="button" class="active" data-category-mode="existing">Existing</button>
+                            <button type="button" data-category-mode="new">New</button>
+                        </div>
+                        <select class="form-control" data-category-existing <?= empty($questionCategories) ? 'disabled' : '' ?>>
+                            <option value=""><?= empty($questionCategories) ? 'No categories yet' : 'Select category' ?></option>
+                            <?php foreach ($questionCategories as $categoryOption): ?>
+                            <option value="<?= htmlspecialchars($categoryOption) ?>"><?= htmlspecialchars($categoryOption) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input class="form-control" type="text" data-category-new placeholder="Type a new category..." maxlength="80" autocomplete="off" hidden>
+                    </div>
                 </div>
             </div>
             <div class="form-group">
@@ -616,7 +743,7 @@ $stats     = $userModel->getStats();
     <div class="modal-box">
         <button class="modal-close" onclick="closeAchievementModal()">x</button>
         <h3>Edit Achievement</h3>
-        <form method="POST" id="editAchievementForm">
+        <form method="POST" action="admin.php?tab=achievements" id="editAchievementForm">
             <input type="hidden" name="admin_action" value="edit_achievement">
             <input type="hidden" name="achievement_id" id="edit_achievement_id">
             <?= csrf_field() ?>
@@ -658,7 +785,7 @@ $stats     = $userModel->getStats();
     <div class="modal-box">
         <button class="modal-close" onclick="closeRankModal()">x</button>
         <h3>Edit Rank</h3>
-        <form method="POST" id="editRankForm">
+        <form method="POST" action="admin.php?tab=ranks" id="editRankForm">
             <input type="hidden" name="admin_action" value="edit_rank">
             <input type="hidden" name="rank_id" id="edit_rank_id">
             <?= csrf_field() ?>
@@ -687,6 +814,9 @@ $stats     = $userModel->getStats();
 </div>
 
 <script src="../assets/js/global.js"></script>
+<script>
+window.adminInitialTab = <?= json_encode($activeTab) ?>;
+</script>
 <script src="../assets/js/admin.js"></script>
 <?php if ($message): ?>
 <script>

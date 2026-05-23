@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Password Form Validation ───────────────────────────────
-    const passwordForm = document.querySelector('form[action*="update_password"]');
+    const passwordForm = document.querySelector('input[name="settings_action"][value="update_password"]')?.form;
     if (passwordForm) {
         passwordForm.addEventListener('submit', function(e) {
             const currentPassword = this.current_password.value;
@@ -116,17 +116,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Username Form Validation ────────────────────────────────
-    const usernameForm = document.querySelector('form[action*="update_username"]');
+    const usernameForm = document.querySelector('input[name="settings_action"][value="update_username"]')?.form;
     if (usernameForm) {
         usernameForm.addEventListener('submit', function(e) {
             const newUsername = this.new_username.value.trim();
 
-            if (newUsername.length < 3) {
+            if (newUsername.length < 3 || newUsername.length > 20) {
                 e.preventDefault();
                 Swal.fire({
                     icon: 'warning',
-                    title: 'Username Too Short',
-                    text: 'Your username must be at least 3 characters long.',
+                    title: 'Invalid Username',
+                    text: 'Your username must be 3-20 characters long.',
                     background: '#1a1830',
                     color: '#f1f0ff',
                     confirmButtonColor: '#4f46e5'
@@ -152,6 +152,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Logout confirm ────────────────────────────────────────
+    const deleteAccountForm = document.getElementById('deleteAccountForm');
+    if (deleteAccountForm) {
+        deleteAccountForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+            Swal.fire({
+                icon: 'warning',
+                title: 'Delete Account?',
+                text: 'Your account will be hidden until an admin restores it.',
+                input: 'textarea',
+                inputLabel: 'Reason',
+                inputPlaceholder: 'Enter your reason for deleting this account...',
+                inputAttributes: { maxlength: 500 },
+                inputValidator: value => !value || !value.trim() ? 'Please enter a reason.' : undefined,
+                background: '#1a1830',
+                color: '#f1f0ff',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#4f46e5',
+                confirmButtonText: 'Delete account',
+                cancelButtonText: 'Cancel',
+            }).then(result => {
+                if (result.isConfirmed) {
+                    const reasonInput = form.querySelector('input[name="delete_reason"]');
+                    if (reasonInput) reasonInput.value = result.value.trim();
+                    form.submit();
+                }
+            });
+        });
+    }
+
     window.confirmLogout = function(e) {
         e.preventDefault();
         const form = e.target;

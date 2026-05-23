@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/Database.php';
+require_once __DIR__ . '/../core/SoftDeleteStore.php';
 
 // ── User Model ────────────────────────────────────────────────
 class User
@@ -12,11 +13,13 @@ class User
     ];
 
     private $conn;
+    private $softDeletes;
 
     public function __construct()
     {
         $db = new Database();
         $this->conn = $db->getConnection();
+        $this->softDeletes = new SoftDeleteStore();
     }
 
     // ── Auth ──────────────────────────────────────────────────
@@ -36,6 +39,9 @@ class User
         $stmt->execute([':username' => $username]);
         if ($stmt->rowCount() === 1) {
             $user = $stmt->fetch();
+            if (($user['role'] ?? 'player') !== 'admin' && $this->softDeletes->isDeleted('players', $user['player_id'])) {
+                return false;
+            }
             if (password_verify($password, $user['password'])) return $user;
         }
         return false;
@@ -84,19 +90,60 @@ class User
     public function getAllPlayers()
     {
         $stmt = $this->conn->prepare(
-            "SELECT player_id, username, email, role, total_xp, level, created_at
-             FROM player
-             WHERE role = 'player'
-             ORDER BY created_at DESC"
+            "SELECT p.player_id, p.username, p.email, p.role, p.total_xp, p.level, p.created_at,
+                    COUNT(gs.session_id) AS games_played,
+                    COALESCE(MAX(gs.total_score), 0) AS best_score,
+                    COALESCE(AVG(gs.total_score), 0) AS avg_score
+             FROM player p
+             LEFT JOIN gamesession gs ON p.player_id = gs.player_id
+             WHERE p.role = 'player'
+             GROUP BY p.player_id, p.username, p.email, p.role, p.total_xp, p.level, p.created_at
+             ORDER BY p.created_at DESC"
         );
         $stmt->execute();
-        return $stmt->fetchAll();
+        return $this->softDeletes->filterRows('players', $stmt->fetchAll(), 'player_id');
     }
 
-    public function deletePlayer($id)
+    public function deletePlayer($id, $reason = '', ?array $deletedBy = null)
     {
-        $stmt = $this->conn->prepare("DELETE FROM player WHERE player_id = :id AND role != 'admin'");
-        return $stmt->execute([':id' => (int)$id]);
+        $stmt = $this->conn->prepare("SELECT player_id FROM player WHERE player_id = :id AND role != 'admin'");
+        $stmt->execute([':id' => (int)$id]);
+        if (!$stmt->fetch()) {
+            return false;
+        }
+
+        return $this->softDeletes->markDeleted('players', (int)$id, $reason, $deletedBy);
+    }
+
+    public function restorePlayer($id)
+    {
+        return $this->softDeletes->restore('players', (int)$id);
+    }
+
+    public function getDeletedPlayers()
+    {
+        $deleted = $this->softDeletes->listDeleted('players');
+        $players = [];
+
+        foreach ($deleted as $id => $meta) {
+            $stmt = $this->conn->prepare(
+                "SELECT player_id, username, email, role, total_xp, level, created_at
+                 FROM player
+                 WHERE player_id = :id"
+            );
+            $stmt->execute([':id' => (int)$id]);
+            $player = $stmt->fetch();
+            if ($player) {
+                $player['deleted_meta'] = $meta;
+                $players[] = $player;
+            }
+        }
+
+        usort($players, function ($a, $b) {
+            return strcmp($b['deleted_meta']['deleted_at'] ?? '', $a['deleted_meta']['deleted_at'] ?? '');
+        });
+
+        return $players;
     }
 
     // ── Admin: Stats ──────────────────────────────────────────
@@ -104,11 +151,24 @@ class User
     public function getStats()
     {
         return [
-            'total_players'   => $this->conn->query("SELECT COUNT(*) FROM player WHERE role='player'")->fetchColumn(),
+            'total_players'   => count($this->getAllPlayers()),
             'total_sessions'  => $this->conn->query("SELECT COUNT(*) FROM gamesession")->fetchColumn(),
-            'total_questions' => $this->conn->query("SELECT COUNT(*) FROM question")->fetchColumn(),
+            'total_questions' => $this->countActiveQuestions(),
             'avg_score'       => $this->conn->query("SELECT COALESCE(AVG(total_score),0) FROM gamesession")->fetchColumn(),
         ];
+    }
+
+    private function countActiveQuestions()
+    {
+        $stmt = $this->conn->prepare("SELECT question_id FROM question");
+        $stmt->execute();
+        $count = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $questionId) {
+            if (!$this->softDeletes->isDeleted('questions', $questionId)) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     // Achievements and ranks
@@ -331,6 +391,9 @@ class User
         $stmt->execute();
         $totalUnlocked = 0;
         foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $playerId) {
+            if ($this->softDeletes->isDeleted('players', $playerId)) {
+                continue;
+            }
             $totalUnlocked += count($this->syncPlayerAchievements((int)$playerId));
         }
         return $totalUnlocked;
@@ -348,11 +411,15 @@ class User
              ORDER BY q.created_at DESC"
         );
         $stmt->execute();
-        return $stmt->fetchAll();
+        return $this->softDeletes->filterRows('questions', $stmt->fetchAll(), 'question_id');
     }
 
     public function getQuestionWithChoices($question_id)
     {
+        if ($this->softDeletes->isDeleted('questions', $question_id)) {
+            return null;
+        }
+
         $stmt = $this->conn->prepare("SELECT * FROM question WHERE question_id = :id");
         $stmt->execute([':id' => $question_id]);
         $question = $stmt->fetch();
@@ -410,10 +477,48 @@ class User
         }
     }
 
-    public function deleteQuestion($id)
+    public function deleteQuestion($id, $reason = '')
     {
-        $stmt = $this->conn->prepare("DELETE FROM question WHERE question_id = :id");
-        return $stmt->execute([':id' => (int)$id]);
+        $stmt = $this->conn->prepare("SELECT question_id FROM question WHERE question_id = :id");
+        $stmt->execute([':id' => (int)$id]);
+        if (!$stmt->fetch()) {
+            return false;
+        }
+
+        return $this->softDeletes->markDeleted('questions', (int)$id, $reason);
+    }
+
+    public function restoreQuestion($id)
+    {
+        return $this->softDeletes->restore('questions', (int)$id);
+    }
+
+    public function getDeletedQuestions()
+    {
+        $deleted = $this->softDeletes->listDeleted('questions');
+        $questions = [];
+
+        foreach ($deleted as $id => $meta) {
+            $stmt = $this->conn->prepare(
+                "SELECT q.*, COUNT(c.choice_id) AS choice_count
+                 FROM question q
+                 LEFT JOIN choice c ON q.question_id = c.question_id
+                 WHERE q.question_id = :id
+                 GROUP BY q.question_id"
+            );
+            $stmt->execute([':id' => (int)$id]);
+            $question = $stmt->fetch();
+            if ($question) {
+                $question['deleted_meta'] = $meta;
+                $questions[] = $question;
+            }
+        }
+
+        usort($questions, function ($a, $b) {
+            return strcmp($b['deleted_meta']['deleted_at'] ?? '', $a['deleted_meta']['deleted_at'] ?? '');
+        });
+
+        return $questions;
     }
 
     // ── Category / Difficulty helpers ─────────────────────────
@@ -422,40 +527,65 @@ class User
     public function getAvailableCategories()
     {
         $stmt = $this->conn->prepare(
-            "SELECT DISTINCT q.category
+            "SELECT DISTINCT q.question_id, q.category
              FROM question q
              INNER JOIN choice c ON q.question_id = c.question_id
              ORDER BY q.category ASC"
         );
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $categories = [];
+        foreach ($stmt->fetchAll() as $row) {
+            if (!$this->softDeletes->isDeleted('questions', $row['question_id'])) {
+                $categories[$row['category']] = true;
+            }
+        }
+        $categories = array_keys($categories);
+        sort($categories, SORT_NATURAL | SORT_FLAG_CASE);
+        return $categories;
     }
 
     /** Difficulties available for a given category */
     public function getAvailableDifficulties($category)
     {
         $stmt = $this->conn->prepare(
-            "SELECT DISTINCT q.difficulty
+            "SELECT DISTINCT q.question_id, q.difficulty
              FROM question q
              INNER JOIN choice c ON q.question_id = c.question_id
              WHERE q.category = :cat
              ORDER BY FIELD(q.difficulty,'easy','medium','hard')"
         );
         $stmt->execute([':cat' => $category]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $difficulties = [];
+        foreach ($stmt->fetchAll() as $row) {
+            if (!$this->softDeletes->isDeleted('questions', $row['question_id'])) {
+                $difficulties[$row['difficulty']] = true;
+            }
+        }
+        $order = ['easy' => 1, 'medium' => 2, 'hard' => 3];
+        $difficulties = array_keys($difficulties);
+        usort($difficulties, function ($a, $b) use ($order) {
+            return ($order[$a] ?? 99) <=> ($order[$b] ?? 99);
+        });
+        return $difficulties;
     }
 
     /** Count questions available for a category + difficulty combo */
     public function countAvailableQuestions($category, $difficulty)
     {
         $stmt = $this->conn->prepare(
-            "SELECT COUNT(DISTINCT q.question_id)
+            "SELECT DISTINCT q.question_id
              FROM question q
              INNER JOIN choice c ON q.question_id = c.question_id
              WHERE q.category = :cat AND q.difficulty = :diff"
         );
         $stmt->execute([':cat' => $category, ':diff' => $difficulty]);
-        return (int)$stmt->fetchColumn();
+        $count = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $questionId) {
+            if (!$this->softDeletes->isDeleted('questions', $questionId)) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     // ── Leaderboard ───────────────────────────────────────────
@@ -464,19 +594,18 @@ class User
     public function getLeaderboard($limit = 10)
     {
         $stmt = $this->conn->prepare(
-            "SELECT p.username, p.total_xp, p.level,
+            "SELECT p.player_id, p.username, p.total_xp, p.level,
                     COUNT(gs.session_id) AS games_played,
                     COALESCE(MAX(gs.total_score), 0) AS best_score
              FROM player p
              LEFT JOIN gamesession gs ON p.player_id = gs.player_id
              WHERE p.role = 'player'
              GROUP BY p.player_id
-             ORDER BY p.total_xp DESC, best_score DESC
-             LIMIT :limit"
+             ORDER BY p.total_xp DESC, best_score DESC"
         );
-        $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll();
+        $rows = $this->softDeletes->filterRows('players', $stmt->fetchAll(), 'player_id');
+        return array_slice($rows, 0, (int)$limit);
     }
 
     /** Leaderboard filtered by category and/or difficulty */
@@ -497,7 +626,7 @@ class User
         $whereSQL = implode(' AND ', $where);
 
         $stmt = $this->conn->prepare(
-            "SELECT p.username, p.total_xp, p.level,
+            "SELECT p.player_id, p.username, p.total_xp, p.level,
                     COUNT(gs.session_id)             AS games_played,
                     COALESCE(MAX(gs.total_score), 0) AS best_score,
                     COALESCE(SUM(gs.xp_earned), 0)   AS filter_xp
@@ -505,15 +634,14 @@ class User
              INNER JOIN gamesession gs ON p.player_id = gs.player_id
              WHERE {$whereSQL}
              GROUP BY p.player_id
-             ORDER BY filter_xp DESC, best_score DESC
-             LIMIT :limit"
+             ORDER BY filter_xp DESC, best_score DESC"
         );
         foreach ($params as $k => $v) {
             $stmt->bindValue($k, $v);
         }
-        $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll();
+        $rows = $this->softDeletes->filterRows('players', $stmt->fetchAll(), 'player_id');
+        return array_slice($rows, 0, (int)$limit);
     }
 
     /** Categories that appear in completed GameSessions */
@@ -565,6 +693,9 @@ class User
         $questions = [];
         foreach ($rows as $row) {
             $qid = $row['question_id'];
+            if ($this->softDeletes->isDeleted('questions', $qid)) {
+                continue;
+            }
             if (!isset($questions[$qid])) {
                 $questions[$qid] = [
                     'question_id'   => $qid,
@@ -595,6 +726,10 @@ class User
     public function saveGameSession($player_id, $score, $xp, $category = null, $difficulty = null)
     {
         $player_id = (int)$player_id;
+        if ($this->softDeletes->isDeleted('players', $player_id)) {
+            return ['session_id' => null, 'unlocked' => [], 'total_xp' => null, 'level' => null];
+        }
+
         $score = max(0, (int)$score);
         $xp = max(0, (int)$xp);
         $newTotalXp = null;

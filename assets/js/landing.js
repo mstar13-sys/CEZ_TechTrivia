@@ -22,17 +22,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const medals = ['🥇','🥈','🥉'];
 
-            container.innerHTML = data.map((p, i) => `
+            container.innerHTML = data.map((p, i) => {
+                const username = String(p.username || 'Player');
+                const avatar = username.charAt(0).toUpperCase() || '?';
+                return `
                 <tr class="lb-row ${i < 3 ? 'lb-top' : ''}">
                     <td class="lb-rank">${medals[i] || (i + 1)}</td>
                     <td class="lb-user">
-                        <span class="lb-avatar">${p.username.charAt(0).toUpperCase()}</span>
-                        ${escHtml(p.username)}
+                        <span class="lb-avatar">${escHtml(avatar)}</span>
+                        ${escHtml(username)}
                     </td>
                     <td class="lb-xp">${parseInt(p.total_xp).toLocaleString()} XP</td>
                     <td class="lb-games">${parseInt(p.games_played)} games</td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
 
         } catch (err) {
             container.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888;padding:24px">Could not load leaderboard.</td></tr>';

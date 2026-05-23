@@ -42,22 +42,23 @@ $flash_error   = get_flash('error');
     <div class="admin-badge">⚙ Admin Panel</div>
     <p class="nav-section-label">Management</p>
     <ul class="nav-menu">
-        <li><a href="admin.php" class="nav-link"><span class="nav-icon">📊</span> Overview</a></li>
-        <li><a href="admin.php?tab=players" class="nav-link"><span class="nav-icon">👥</span> Players</a></li>
-        <li><a href="admin.php?tab=questions" class="nav-link"><span class="nav-icon">❓</span> Questions</a></li>
-        <li><a href="admin.php?tab=achievements" class="nav-link"><span class="nav-icon">🏅</span> Achievements</a></li>
-        <li><a href="admin.php?tab=ranks" class="nav-link"><span class="nav-icon">R</span> Ranks</a></li>
+        <li><a href="admin.php" class="nav-link"><span class="nav-icon">&#128202;</span> Overview</a></li>
+        <li><a href="admin.php?tab=players" class="nav-link"><span class="nav-icon">&#128101;</span> Players</a></li>
+        <li><a href="admin.php?tab=questions" class="nav-link"><span class="nav-icon">&#10067;</span> Questions</a></li>
+        <li><a href="admin.php?tab=achievements" class="nav-link"><span class="nav-icon">&#127941;</span> Achievements</a></li>
+        <li><a href="admin.php?tab=ranks" class="nav-link"><span class="nav-icon">&#127942;</span> Ranks</a></li>
+        <li><a href="deleted.php"><span class="nav-icon">&#128465;</span> Deleted</a></li>
     </ul>
     <p class="nav-section-label">Account</p>
     <ul class="nav-menu">
-        <li><a href="admin_settings.php" class="active"><span class="nav-icon">⚙️</span> Settings</a></li>
+        <li><a href="admin_settings.php" class="active"><span class="nav-icon">&#9881;</span> Settings</a></li>
     </ul>
     <div class="sidebar-footer">
         <form class="logout-form" action="../controllers/AuthController.php" method="POST"
               onsubmit="return confirmLogout(event)">
             <input type="hidden" name="action" value="logout">
             <?= csrf_field() ?>
-            <button type="submit">🚪 Sign Out</button>
+            <button type="submit">&#128682; Sign Out</button>
         </form>
     </div>
 </div>
@@ -77,7 +78,7 @@ $flash_error   = get_flash('error');
         <!-- Theme Toggle -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <div class="settings-card-icon">🎨</div>
+                <div class="settings-card-icon">&#127912;</div>
                 <div>
                     <h3>Appearance</h3>
                     <p>Customize your visual experience</p>
@@ -88,11 +89,11 @@ $flash_error   = get_flash('error');
                     <span class="theme-label">Theme Mode</span>
                     <div class="theme-switch">
                         <button class="theme-btn" data-theme="dark" title="Dark Mode">
-                            <span>🌙</span>
+                            <span>&#127769;</span>
                             <span>Dark</span>
                         </button>
                         <button class="theme-btn" data-theme="light" title="Light Mode">
-                            <span>☀️</span>
+                            <span>&#9728;</span>
                             <span>Light</span>
                         </button>
                     </div>
@@ -103,7 +104,7 @@ $flash_error   = get_flash('error');
         <!-- Username Change -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <div class="settings-card-icon">👤</div>
+                <div class="settings-card-icon">&#128100;</div>
                 <div>
                     <h3>Username</h3>
                     <p>Change your display name</p>
@@ -129,7 +130,7 @@ $flash_error   = get_flash('error');
         <!-- Password Change -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <div class="settings-card-icon">🔒</div>
+                <div class="settings-card-icon">&#128274;</div>
                 <div>
                     <h3>Password</h3>
                     <p>Update your password for security</p>
@@ -159,7 +160,7 @@ $flash_error   = get_flash('error');
         <!-- Account Info -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <div class="settings-card-icon">ℹ️</div>
+                <div class="settings-card-icon">&#8505;</div>
                 <div>
                     <h3>Account Information</h3>
                     <p>Your account details</p>

@@ -14,5 +14,6 @@ if (empty($_SESSION['csrf_token'])) {
 
 // Load core classes and helpers
 require_once __DIR__ . '/core/Database.php';
+require_once __DIR__ . '/core/SoftDeleteStore.php';
 require_once __DIR__ . '/helpers/csrf_helper.php';
 require_once __DIR__ . '/helpers/session_helper.php';

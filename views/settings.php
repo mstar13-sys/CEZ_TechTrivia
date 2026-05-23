@@ -51,11 +51,11 @@ $flash_error   = get_flash('error');
 
     <p class="nav-section-label">Navigation</p>
     <ul class="nav-menu">
-        <li><a href="dashboard.php"><span class="nav-icon">🏠</span> Dashboard</a></li>
-        <li><a href="../views/select_quiz.php"><span class="nav-icon">🎮</span> Start Quiz</a></li>
-        <li><a href="achievements.php"><span class="nav-icon">🏅</span> Achievements</a></li>
-        <li><a href="leaderboard.php"><span class="nav-icon">🏆</span> Leaderboard</a></li>
-        <li><a href="settings.php" class="active"><span class="nav-icon">⚙️</span> Settings</a></li>
+        <li><a href="dashboard.php"><span class="nav-icon">&#127968;</span> Dashboard</a></li>
+        <li><a href="../views/select_quiz.php"><span class="nav-icon">&#127918;</span> Start Quiz</a></li>
+        <li><a href="achievements.php"><span class="nav-icon">&#127941;</span> Achievements</a></li>
+        <li><a href="leaderboard.php"><span class="nav-icon">&#127942;</span> Leaderboard</a></li>
+        <li><a href="settings.php" class="active"><span class="nav-icon">&#9881;</span> Settings</a></li>
     </ul>
 
     <div class="sidebar-footer">
@@ -63,7 +63,7 @@ $flash_error   = get_flash('error');
               onsubmit="return confirmLogout(event)">
             <input type="hidden" name="action"     value="logout">
             <?= csrf_field() ?>
-            <button type="submit">🚪 Sign Out</button>
+            <button type="submit">&#128682; Sign Out</button>
         </form>
     </div>
 </div>
@@ -83,7 +83,7 @@ $flash_error   = get_flash('error');
         <!-- Theme Toggle -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <div class="settings-card-icon">🎨</div>
+                <div class="settings-card-icon">&#127912;</div>
                 <div>
                     <h3>Appearance</h3>
                     <p>Customize your visual experience</p>
@@ -94,11 +94,11 @@ $flash_error   = get_flash('error');
                     <span class="theme-label">Theme Mode</span>
                     <div class="theme-switch">
                         <button class="theme-btn" data-theme="dark" title="Dark Mode">
-                            <span>🌙</span>
+                            <span>&#127769;</span>
                             <span>Dark</span>
                         </button>
                         <button class="theme-btn" data-theme="light" title="Light Mode">
-                            <span>☀️</span>
+                            <span>&#9728;</span>
                             <span>Light</span>
                         </button>
                     </div>
@@ -109,7 +109,7 @@ $flash_error   = get_flash('error');
         <!-- Username Change -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <div class="settings-card-icon">👤</div>
+                <div class="settings-card-icon">&#128100;</div>
                 <div>
                     <h3>Username</h3>
                     <p>Change your display name</p>
@@ -135,7 +135,7 @@ $flash_error   = get_flash('error');
         <!-- Password Change -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <div class="settings-card-icon">🔒</div>
+                <div class="settings-card-icon">&#128274;</div>
                 <div>
                     <h3>Password</h3>
                     <p>Update your password for security</p>
@@ -162,10 +162,29 @@ $flash_error   = get_flash('error');
             </div>
         </div>
 
+        <!-- Delete Account -->
+        <div class="settings-card danger-card">
+            <div class="settings-card-header">
+                <div class="settings-card-icon">&#9888;</div>
+                <div>
+                    <h3>Delete Account</h3>
+                    <p>Hide your account from the system</p>
+                </div>
+            </div>
+            <div class="settings-card-body">
+                <form method="POST" action="../controllers/SettingsController.php" class="settings-form" id="deleteAccountForm">
+                    <input type="hidden" name="settings_action" value="delete_account">
+                    <input type="hidden" name="delete_reason" value="">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-danger">Delete My Account</button>
+                </form>
+            </div>
+        </div>
+
         <!-- Account Info -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <div class="settings-card-icon">ℹ️</div>
+                <div class="settings-card-icon">&#8505;</div>
                 <div>
                     <h3>Account Information</h3>
                     <p>Your account details</p>

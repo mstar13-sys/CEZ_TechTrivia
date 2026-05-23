@@ -181,6 +181,31 @@
     box-shadow: 0 4px 12px rgba(79,70,229,0.4);
 }
 
+.danger-card {
+    border-color: rgba(239,68,68,0.35);
+}
+
+.danger-card .settings-card-header {
+    background: rgba(239,68,68,0.08);
+}
+
+.danger-card .settings-card-icon {
+    background: rgba(239,68,68,0.16);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.28);
+}
+
+.settings-form .btn-danger {
+    background: rgba(239,68,68,0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.25);
+}
+
+.settings-form .btn-danger:hover {
+    background: rgba(239,68,68,0.24);
+    transform: translateY(-1px);
+}
+
 /* Info Grid */
 .info-grid {
     display: grid;
@@ -242,6 +267,24 @@ body.light-mode .theme-btn.active {
 
 body.light-mode .info-item {
     background: #f8fafc;
+}
+
+body.light-mode .danger-card {
+    border-color: rgba(239,68,68,0.25);
+}
+
+body.light-mode .danger-card .settings-card-header {
+    background: rgba(239,68,68,0.05);
+}
+
+body.light-mode .danger-card .settings-card-icon {
+    color: #dc2626;
+}
+
+body.light-mode .settings-form .btn-danger {
+    background: rgba(239,68,68,0.08);
+    color: #dc2626;
+    border-color: rgba(239,68,68,0.2);
 }
 
 /* Responsive */
