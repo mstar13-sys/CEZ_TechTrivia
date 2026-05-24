@@ -31,11 +31,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = $result ? 'Question restored.' : 'Failed to restore question.';
             $msgType = $result ? 'success' : 'error';
         }
+
+        if ($action === 'restore_achievement') {
+            $result = $userModel->restoreAchievement((int)($_POST['achievement_id'] ?? 0));
+            $message = $result ? 'Achievement restored.' : 'Failed to restore achievement.';
+            $msgType = $result ? 'success' : 'error';
+        }
+
+        if ($action === 'restore_rank') {
+            $result = $userModel->restoreRank((int)($_POST['rank_id'] ?? 0));
+            $message = $result ? 'Rank restored.' : 'Failed to restore rank.';
+            $msgType = $result ? 'success' : 'error';
+        }
     }
 }
 
 $deletedPlayers = $userModel->getDeletedPlayers();
 $deletedQuestions = $questionModel->getDeletedWithChoiceCount();
+$deletedAchievements = $userModel->getDeletedAchievements();
+$deletedRanks = $userModel->getDeletedRanks();
+$notificationCount = (new NotificationStore())->unreadCount();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -70,6 +85,7 @@ $deletedQuestions = $questionModel->getDeletedWithChoiceCount();
         <li><a href="admin.php?tab=achievements" class="nav-link"><span class="nav-icon">&#127941;</span> Achievements</a></li>
         <li><a href="admin.php?tab=ranks" class="nav-link"><span class="nav-icon">&#127942;</span> Ranks</a></li>
         <li><a href="deleted.php" class="active"><span class="nav-icon">&#128465;</span> Deleted</a></li>
+        <li><a href="notifications.php"><span class="nav-icon">&#128276;</span> Notifications<?= $notificationCount > 0 ? ' <span class="nav-count">' . (int)$notificationCount . '</span>' : '' ?></a></li>
     </ul>
     <p class="nav-section-label">Account</p>
     <ul class="nav-menu">
@@ -88,7 +104,7 @@ $deletedQuestions = $questionModel->getDeletedWithChoiceCount();
     <div class="page-header">
         <div>
             <h1>Deleted Records</h1>
-            <p>Restore hidden players and questions</p>
+            <p>Restore hidden players, questions, achievements, and ranks</p>
         </div>
         <div class="header-actions">
             <button class="theme-toggle-btn" id="themeToggle" title="Toggle Theme">
@@ -135,7 +151,7 @@ $deletedQuestions = $questionModel->getDeletedWithChoiceCount();
         <?php endif; ?>
     </div>
 
-    <div class="table-card">
+    <div class="table-card" style="margin-bottom:24px">
         <div class="table-header">
             <h3>Deleted Questions (<?= count($deletedQuestions) ?>)</h3>
             <input class="search-input" type="text" placeholder="Search questions..." oninput="filterTable('deletedQuestionTable', this.value)">
@@ -162,6 +178,88 @@ $deletedQuestions = $questionModel->getDeletedWithChoiceCount();
                             <form method="POST" style="display:inline" onsubmit="return confirmRestore(event, 'question')">
                                 <input type="hidden" name="deleted_action" value="restore_question">
                                 <input type="hidden" name="question_id" value="<?= (int)$question['question_id'] ?>">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="btn btn-success">&#8634; Restore</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+
+    <div class="table-card" style="margin-bottom:24px">
+        <div class="table-header">
+            <h3>Deleted Achievements (<?= count($deletedAchievements) ?>)</h3>
+            <input class="search-input" type="text" placeholder="Search achievements..." oninput="filterTable('deletedAchievementTable', this.value)">
+        </div>
+        <?php if (empty($deletedAchievements)): ?>
+            <div class="empty-state"><div class="empty-icon">&#127941;</div><p>No deleted achievements.</p></div>
+        <?php else: ?>
+            <table id="deletedAchievementTable">
+                <thead>
+                    <tr><th>#</th><th>Title</th><th>Description</th><th>Condition</th><th>Deleted By</th><th>Reason</th><th>Deleted At</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                <?php foreach ($deletedAchievements as $i => $achievement): ?>
+                    <?php $meta = $achievement['deleted_meta'] ?? []; ?>
+                    <tr>
+                        <td style="color:var(--text-muted)"><?= $i + 1 ?></td>
+                        <td><strong><?= htmlspecialchars($achievement['title']) ?></strong></td>
+                        <td style="max-width:320px;word-break:break-word;color:var(--text-muted)"><?= htmlspecialchars($achievement['description']) ?></td>
+                        <td>
+                            <span class="badge badge-player"><?= htmlspecialchars(ucfirst(str_replace('_', ' ', $achievement['condition_type']))) ?></span>
+                            <span style="color:var(--text-muted);font-size:13px;margin-left:6px"><?= (int)$achievement['condition_value'] ?></span>
+                        </td>
+                        <td><?= htmlspecialchars($meta['deleted_by_username'] ?? 'Unknown') ?></td>
+                        <td style="max-width:280px;word-break:break-word;color:var(--text-muted)"><?= htmlspecialchars($meta['reason'] ?? '') ?></td>
+                        <td style="color:var(--text-muted);font-size:13px"><?= htmlspecialchars($meta['deleted_at'] ?? '') ?></td>
+                        <td>
+                            <form method="POST" style="display:inline" onsubmit="return confirmRestore(event, 'achievement')">
+                                <input type="hidden" name="deleted_action" value="restore_achievement">
+                                <input type="hidden" name="achievement_id" value="<?= (int)$achievement['achievement_id'] ?>">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="btn btn-success">&#8634; Restore</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+
+    <div class="table-card">
+        <div class="table-header">
+            <h3>Deleted Ranks (<?= count($deletedRanks) ?>)</h3>
+            <input class="search-input" type="text" placeholder="Search ranks..." oninput="filterTable('deletedRankTable', this.value)">
+        </div>
+        <?php if (empty($deletedRanks)): ?>
+            <div class="empty-state"><div class="empty-icon">&#127942;</div><p>No deleted ranks.</p></div>
+        <?php else: ?>
+            <table id="deletedRankTable">
+                <thead>
+                    <tr><th>#</th><th>Rank</th><th>XP Range</th><th>Medal</th><th>Deleted By</th><th>Reason</th><th>Deleted At</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                <?php foreach ($deletedRanks as $i => $rank): ?>
+                    <?php $meta = $rank['deleted_meta'] ?? []; ?>
+                    <tr>
+                        <td style="color:var(--text-muted)"><?= $i + 1 ?></td>
+                        <td><strong><?= htmlspecialchars($rank['rank_name']) ?></strong></td>
+                        <td style="color:var(--text-muted);font-size:13px">
+                            <?= number_format((int)$rank['min_xp']) ?> -
+                            <?= $rank['max_xp'] === null ? 'No limit' : number_format((int)$rank['max_xp']) ?>
+                        </td>
+                        <td><?= htmlspecialchars($rank['medal']) ?></td>
+                        <td><?= htmlspecialchars($meta['deleted_by_username'] ?? 'Unknown') ?></td>
+                        <td style="max-width:280px;word-break:break-word;color:var(--text-muted)"><?= htmlspecialchars($meta['reason'] ?? '') ?></td>
+                        <td style="color:var(--text-muted);font-size:13px"><?= htmlspecialchars($meta['deleted_at'] ?? '') ?></td>
+                        <td>
+                            <form method="POST" style="display:inline" onsubmit="return confirmRestore(event, 'rank')">
+                                <input type="hidden" name="deleted_action" value="restore_rank">
+                                <input type="hidden" name="rank_id" value="<?= (int)$rank['rank_id'] ?>">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="btn btn-success">&#8634; Restore</button>
                             </form>

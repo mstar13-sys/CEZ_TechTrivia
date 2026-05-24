@@ -398,21 +398,21 @@ body {
    LIGHT MODE
    ════════════════════════════════════════════════════════════ */
 body.light-mode {
-    --bg:      #f1f5f9;
+    --bg:      #ffffff;
     --card-bg: #ffffff;
-    --border:  #cbd5e1;
+    --border:  #94a3b8;
     --text:    #111827;
     --muted:   #475569;
 }
 
 body.light-mode .question-card {
-    border-color: #cbd5e1;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border-color: #94a3b8;
+    box-shadow: 0 6px 18px rgba(15,23,42,0.11);
 }
 
 body.light-mode .choice-btn {
     background: #ffffff;
-    border-color: #cbd5e1;
+    border-color: #94a3b8;
     color: #111827;
 }
 
@@ -459,30 +459,30 @@ body.light-mode .feedback-answer strong { color: #111827; }
 body.light-mode .next-btn { background: #2563eb; }
 
 body.light-mode .result-card {
-    border-color: #cbd5e1;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    border-color: #94a3b8;
+    box-shadow: 0 6px 18px rgba(15,23,42,0.11);
 }
 
 body.light-mode .wrong-item {
     background: #f8fafc;
-    border-color: #cbd5e1;
+    border-color: #94a3b8;
 }
 body.light-mode .wrong-item .q { color: #111827; }
 body.light-mode .wrong-item .a { color: #16a34a; }
 
 body.light-mode .btn-outline {
-    border-color: #cbd5e1;
+    border-color: #94a3b8;
     color: #111827;
 }
 
 body.light-mode .theme-toggle-btn {
     background: #ffffff;
-    border-color: #cbd5e1;
+    border-color: #94a3b8;
 }
 
 body.light-mode .header-date {
     background: #ffffff;
-    border-color: #cbd5e1;
+    border-color: #94a3b8;
     color: #475569;
 }
 

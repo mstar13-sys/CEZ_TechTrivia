@@ -41,13 +41,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (theme === 'light') {
-            document.documentElement.style.setProperty('--bg-dark', '#f8fafc');
+            document.documentElement.style.setProperty('--bg-dark', '#ffffff');
             document.documentElement.style.setProperty('--bg-sidebar', '#ffffff');
             document.documentElement.style.setProperty('--bg-card', '#ffffff');
             document.documentElement.style.setProperty('--bg-input', '#f1f5f9');
             document.documentElement.style.setProperty('--text-main', '#1e293b');
             document.documentElement.style.setProperty('--text-muted', '#64748b');
-            document.documentElement.style.setProperty('--border', '#e2e8f0');
+            document.documentElement.style.setProperty('--border', '#94a3b8');
         } else {
             document.documentElement.style.setProperty('--bg-dark', '#0f0e1a');
             document.documentElement.style.setProperty('--bg-sidebar', '#13112b');
@@ -259,12 +259,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = e.target;
         Swal.fire({
             icon: 'warning', title: 'Delete Achievement?',
-            text: 'Players will lose the unlocked record for this achievement.',
+            text: 'This achievement will be hidden until an admin restores it.',
+            input: 'textarea',
+            inputLabel: 'Reason',
+            inputPlaceholder: 'Enter the reason for deleting this achievement...',
+            inputAttributes: { maxlength: 500 },
+            inputValidator: value => !value || !value.trim() ? 'Please enter a reason.' : undefined,
             background: '#1a1830', color: '#f1f0ff',
             showCancelButton: true,
             confirmButtonColor: '#ef4444', cancelButtonColor: '#4f46e5',
-            confirmButtonText: 'Delete', cancelButtonText: 'Cancel',
-        }).then(r => { if (r.isConfirmed) form.submit(); });
+            confirmButtonText: 'Move to deleted', cancelButtonText: 'Cancel',
+        }).then(r => {
+            if (r.isConfirmed) {
+                const reasonInput = form.querySelector('input[name="delete_reason"]');
+                if (reasonInput) reasonInput.value = r.value.trim();
+                form.submit();
+            }
+        });
         return false;
     };
 
@@ -273,12 +284,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = e.target;
         Swal.fire({
             icon: 'warning', title: 'Delete Rank?',
-            text: 'Players in this XP range will fall back to the next matching rank.',
+            text: 'This rank will be hidden until an admin restores it.',
+            input: 'textarea',
+            inputLabel: 'Reason',
+            inputPlaceholder: 'Enter the reason for deleting this rank...',
+            inputAttributes: { maxlength: 500 },
+            inputValidator: value => !value || !value.trim() ? 'Please enter a reason.' : undefined,
             background: '#1a1830', color: '#f1f0ff',
             showCancelButton: true,
             confirmButtonColor: '#ef4444', cancelButtonColor: '#4f46e5',
-            confirmButtonText: 'Delete', cancelButtonText: 'Cancel',
-        }).then(r => { if (r.isConfirmed) form.submit(); });
+            confirmButtonText: 'Move to deleted', cancelButtonText: 'Cancel',
+        }).then(r => {
+            if (r.isConfirmed) {
+                const reasonInput = form.querySelector('input[name="delete_reason"]');
+                if (reasonInput) reasonInput.value = r.value.trim();
+                form.submit();
+            }
+        });
         return false;
     };
 

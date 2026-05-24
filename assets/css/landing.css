@@ -72,10 +72,43 @@
             color: var(--primary);
         }
 
+        .auth-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .auth-buttons .btn-login {
             color: white;
             text-decoration: none;
-            margin-right: 15px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+
+        /* .btn-recovery {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            margin-left: 6px;
+            color: #dbeafe;
+            text-decoration: none;
+            border: 1px solid rgba(191, 219, 254, 0.38);
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: background .2s, border-color .2s, color .2s, transform .2s;
+        } */
+
+        .btn-recovery:hover {
+            color: #fff;
+            background: rgba(37, 99, 235, 0.25);
+            border-color: rgba(191, 219, 254, 0.7);
+            transform: translateY(-1px);
         }
 
         .btn-signup {
@@ -131,8 +164,10 @@
         }
 
         .hero-btns {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, max-content);
             gap: 15px;
+            width: fit-content;
         }
 
         .btn-primary {
@@ -157,6 +192,12 @@
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .hero-recovery-btn {
+            grid-column: 1 / -1;
+            justify-self: center;
+            margin: 0 auto;
         }
 
         .hero-image {
@@ -249,10 +290,166 @@
             text-align: center;
         }
 
+        body.recovery-open > *:not(.recovery-modal) {
+            filter: blur(5px);
+        }
+
+        body.recovery-open {
+            overflow: hidden;
+        }
+
+        .recovery-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .24s ease, visibility .24s ease;
+        }
+
+        .recovery-modal.open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .recovery-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(5, 10, 48, 0.68);
+            opacity: 0;
+            transition: opacity .24s ease;
+        }
+
+        .recovery-modal.open .recovery-backdrop {
+            opacity: 1;
+        }
+
+        .recovery-dialog {
+            position: relative;
+            width: min(100%, 460px);
+            background: linear-gradient(180deg, #0b123f 0%, #050a30 100%);
+            border: 1px solid rgba(191, 219, 254, 0.22);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 28px 90px rgba(5, 10, 48, 0.58);
+            transform: translateY(18px) scale(.97);
+            opacity: 0;
+            transition: transform .28s ease, opacity .24s ease;
+        }
+
+        .recovery-modal.open .recovery-dialog {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        .recovery-dialog::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto;
+            height: 5px;
+            border-radius: 12px 12px 0 0;
+            background: linear-gradient(90deg, var(--primary), var(--accent-green));
+        }
+
+        .recovery-dialog h2 {
+            color: #ffffff;
+            margin-bottom: 8px;
+            padding-right: 34px;
+        }
+
+        .recovery-dialog p {
+            color: #bfdbfe;
+            margin-bottom: 18px;
+            font-size: 0.92rem;
+        }
+
+        .recovery-dialog label {
+            display: block;
+            color: #dbeafe;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin: 12px 0 6px;
+        }
+
+        .recovery-dialog input,
+        .recovery-dialog textarea {
+            width: 100%;
+            border: 1px solid rgba(191, 219, 254, 0.24);
+            border-radius: 8px;
+            padding: 11px 12px;
+            font: inherit;
+            resize: vertical;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+        .recovery-dialog input::placeholder,
+        .recovery-dialog textarea::placeholder {
+            color: rgba(219, 234, 254, 0.58);
+        }
+
+        .recovery-dialog input:focus,
+        .recovery-dialog textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.14);
+        }
+
+        .recovery-dialog button[type="submit"] {
+            width: 100%;
+            border: 0;
+            border-radius: 8px;
+            background: var(--primary);
+            color: #fff;
+            padding: 12px;
+            font-weight: 800;
+            margin-top: 16px;
+            cursor: pointer;
+            transition: background .2s, transform .2s;
+        }
+
+        .recovery-dialog button[type="submit"]:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .recovery-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: #dbeafe;
+            font-size: 22px;
+            cursor: pointer;
+            transition: background .2s, color .2s;
+        }
+
+        .recovery-close:hover {
+            background: #2563eb;
+            color: #ffffff;
+        }
+
         @media (max-width: 768px) {
             nav, .auth-buttons { display: none; }
             .hero-content h1 { font-size: 2.5rem; }
             #home { flex-direction: column; text-align: center; }
-            .hero-btns { justify-content: center; }
+            .hero-btns {
+                grid-template-columns: 1fr;
+                justify-items: center;
+                width: 100%;
+            }
+            .hero-recovery-btn { grid-column: auto; }
             .hero-image { margin-top: 50px; }
         }

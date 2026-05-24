@@ -12,6 +12,7 @@ $user      = $userModel->getUserById($_SESSION['user_id']);
 
 $flash_success = get_flash('success');
 $flash_error   = get_flash('error');
+$notificationCount = (new NotificationStore())->unreadCount();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,6 +49,7 @@ $flash_error   = get_flash('error');
         <li><a href="admin.php?tab=achievements" class="nav-link"><span class="nav-icon">&#127941;</span> Achievements</a></li>
         <li><a href="admin.php?tab=ranks" class="nav-link"><span class="nav-icon">&#127942;</span> Ranks</a></li>
         <li><a href="deleted.php"><span class="nav-icon">&#128465;</span> Deleted</a></li>
+        <li><a href="notifications.php"><span class="nav-icon">&#128276;</span> Notifications<?= $notificationCount > 0 ? ' <span class="nav-count">' . (int)$notificationCount . '</span>' : '' ?></a></li>
     </ul>
     <p class="nav-section-label">Account</p>
     <ul class="nav-menu">

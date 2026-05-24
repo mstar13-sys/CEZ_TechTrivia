@@ -1,0 +1,94 @@
+{
+    "notifications": [
+        {
+            "id": "184960ef8f6a99c7e80773c9",
+            "type": "recovery_request",
+            "title": "Account recovery request",
+            "message": "lester wants to recover a deleted account.",
+            "payload": {
+                "player_id": 3,
+                "username": "lester",
+                "email": "lester@gmail.com",
+                "deleted_reason": "Sample only",
+                "return_reason": "Come back"
+            },
+            "is_read": true,
+            "created_at": "2026-05-23 15:14:19"
+        },
+        {
+            "id": "fb19bfea59958d71a8ac66c1",
+            "type": "account_deleted",
+            "title": "Account deleted",
+            "message": "lester was moved to deleted records.",
+            "payload": {
+                "player_id": 3,
+                "username": "lester",
+                "email": "lester@gmail.com",
+                "delete_reason": "Sample only",
+                "deleted_by_username": "lester"
+            },
+            "is_read": true,
+            "created_at": "2026-05-23 15:12:51"
+        },
+        {
+            "id": "a8b1130c35b790bb2da5bf6f",
+            "type": "recovery_request",
+            "title": "Account recovery request",
+            "message": "lester wants to recover a deleted account.",
+            "payload": {
+                "player_id": 3,
+                "username": "lester",
+                "email": "lester@gmail.com",
+                "deleted_reason": "asdasd",
+                "return_reason": "I want to play again"
+            },
+            "is_read": true,
+            "created_at": "2026-05-23 15:00:28"
+        },
+        {
+            "id": "93caac2f4755c1f1a8103e80",
+            "type": "account_deleted",
+            "title": "Account deleted",
+            "message": "lester was moved to deleted records.",
+            "payload": {
+                "player_id": 3,
+                "username": "lester",
+                "email": "lester@gmail.com",
+                "delete_reason": "asdasd",
+                "deleted_by_username": "lester"
+            },
+            "is_read": true,
+            "created_at": "2026-05-23 14:51:57"
+        },
+        {
+            "id": "9345e646894443441e9aeacb",
+            "type": "recovery_request",
+            "title": "Account recovery request",
+            "message": "lester wants to recover a deleted account.",
+            "payload": {
+                "player_id": 3,
+                "username": "lester",
+                "email": "lester@gmail.com",
+                "deleted_reason": "Sample ra",
+                "return_reason": "I want to play again"
+            },
+            "is_read": true,
+            "created_at": "2026-05-23 14:39:30"
+        },
+        {
+            "id": "1e6df2b84198cc864f3ce2fe",
+            "type": "account_deleted",
+            "title": "Account deleted",
+            "message": "lester was moved to deleted records.",
+            "payload": {
+                "player_id": 3,
+                "username": "lester",
+                "email": "lester@gmail.com",
+                "delete_reason": "Sample ra",
+                "deleted_by_username": "lester"
+            },
+            "is_read": true,
+            "created_at": "2026-05-23 14:37:15"
+        }
+    ]
+}

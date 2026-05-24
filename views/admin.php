@@ -169,8 +169,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($act === 'delete_achievement') {
             $aid = (int)($_POST['achievement_id'] ?? 0);
-            $result = $userModel->deleteAchievement($aid);
-            $message = $result ? 'Achievement deleted.' : 'Failed to delete achievement.';
+            $reason = normalize_delete_reason($_POST['delete_reason'] ?? '');
+            if ($reason === '') {
+                $result = false;
+                $message = 'A delete reason is required.';
+            } elseif (strlen($reason) > $maxDeleteReasonLength) {
+                $result = false;
+                $message = 'Delete reason must be 500 characters or fewer.';
+            } else {
+                $result = $userModel->deleteAchievementWithReason($aid, $reason, [
+                    'id' => $_SESSION['user_id'] ?? 0,
+                    'username' => $_SESSION['username'] ?? 'Admin',
+                ]);
+                $message = $result ? 'Achievement moved to deleted records.' : 'Failed to delete achievement.';
+            }
             $msgType = $result ? 'success' : 'error';
         }
 
@@ -195,8 +207,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($act === 'delete_rank') {
             $rankId = (int)($_POST['rank_id'] ?? 0);
-            $result = $userModel->deleteRank($rankId);
-            $message = $result ? 'Rank deleted.' : 'Failed to delete rank.';
+            $reason = normalize_delete_reason($_POST['delete_reason'] ?? '');
+            if ($reason === '') {
+                $result = false;
+                $message = 'A delete reason is required.';
+            } elseif (strlen($reason) > $maxDeleteReasonLength) {
+                $result = false;
+                $message = 'Delete reason must be 500 characters or fewer.';
+            } else {
+                $result = $userModel->deleteRankWithReason($rankId, $reason, [
+                    'id' => $_SESSION['user_id'] ?? 0,
+                    'username' => $_SESSION['username'] ?? 'Admin',
+                ]);
+                $message = $result ? 'Rank moved to deleted records.' : 'Failed to delete rank.';
+            }
             $msgType = $result ? 'success' : 'error';
         }
     }
@@ -208,6 +232,7 @@ $questionCategories = $questionModel->getCategories();
 $achievements = $userModel->getAllAchievements();
 $ranks = $userModel->getAllRanks();
 $stats     = $userModel->getStats();
+$notificationCount = (new NotificationStore())->unreadCount();
 
 function admin_tab_class($tab, $activeTab) {
     return $tab === $activeTab ? ' active' : '';
@@ -260,8 +285,8 @@ function admin_tab_class($tab, $activeTab) {
         /* Light Mode */
         body.light-mode .modal-box {
             background: #ffffff;
-            border-color: #e2e8f0;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            border-color: #94a3b8;
+            box-shadow: 0 18px 48px rgba(15,23,42,0.18);
         }
         body.light-mode .modal-close { color: #64748b; }
         body.light-mode .modal-close:hover { color: #111827; }
@@ -290,6 +315,7 @@ function admin_tab_class($tab, $activeTab) {
         <li><a href="#" class="nav-link" data-tab="achievements"><span class="nav-icon">🏅</span> Achievements</a></li>
         <li><a href="#" class="nav-link" data-tab="ranks"><span class="nav-icon">&#127942;</span> Ranks</a></li>
         <li><a href="deleted.php"><span class="nav-icon">&#128465;</span> Deleted</a></li>
+        <li><a href="notifications.php"><span class="nav-icon">&#128276;</span> Notifications<?= $notificationCount > 0 ? ' <span class="nav-count">' . (int)$notificationCount . '</span>' : '' ?></a></li>
     </ul>
     <p class="nav-section-label">Account</p>
     <ul class="nav-menu">
@@ -599,6 +625,7 @@ function admin_tab_class($tab, $activeTab) {
                         <form method="POST" action="admin.php?tab=achievements" style="display:inline" onsubmit="return confirmDeleteAchievement(event)">
                             <input type="hidden" name="admin_action" value="delete_achievement">
                             <input type="hidden" name="achievement_id" value="<?= (int)$achievement['achievement_id'] ?>">
+                            <input type="hidden" name="delete_reason" value="">
                             <?= csrf_field() ?>
                             <button type="submit" class="btn btn-danger">Delete</button>
                         </form>
@@ -666,6 +693,7 @@ function admin_tab_class($tab, $activeTab) {
                         <form method="POST" action="admin.php?tab=ranks" style="display:inline" onsubmit="return confirmDeleteRank(event)">
                             <input type="hidden" name="admin_action" value="delete_rank">
                             <input type="hidden" name="rank_id" value="<?= (int)$rankRow['rank_id'] ?>">
+                            <input type="hidden" name="delete_reason" value="">
                             <?= csrf_field() ?>
                             <button type="submit" class="btn btn-danger">Delete</button>
                         </form>

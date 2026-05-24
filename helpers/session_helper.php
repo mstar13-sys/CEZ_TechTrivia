@@ -48,3 +48,7 @@ function normalize_delete_reason($reason) {
     $reason = preg_replace('/\s+/', ' ', $reason);
     return trim($reason);
 }
+
+function normalize_recovery_reason($reason) {
+    return normalize_delete_reason($reason);
+}

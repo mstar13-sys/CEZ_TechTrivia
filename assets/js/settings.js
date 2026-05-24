@@ -48,13 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update CSS variables for light mode
         if (theme === 'light') {
-            document.documentElement.style.setProperty('--bg-dark', '#f8fafc');
+            document.documentElement.style.setProperty('--bg-dark', '#ffffff');
             document.documentElement.style.setProperty('--bg-sidebar', '#ffffff');
             document.documentElement.style.setProperty('--bg-card', '#ffffff');
             document.documentElement.style.setProperty('--bg-input', '#f1f5f9');
             document.documentElement.style.setProperty('--text-main', '#1e293b');
             document.documentElement.style.setProperty('--text-muted', '#64748b');
-            document.documentElement.style.setProperty('--border', '#e2e8f0');
+            document.documentElement.style.setProperty('--border', '#94a3b8');
         } else {
             document.documentElement.style.setProperty('--bg-dark', '#0f0e1a');
             document.documentElement.style.setProperty('--bg-sidebar', '#13112b');

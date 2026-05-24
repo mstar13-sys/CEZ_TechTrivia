@@ -89,6 +89,8 @@ class SoftDeleteStore
         $data = [
             'players' => [],
             'questions' => [],
+            'achievements' => [],
+            'ranks' => [],
         ];
 
         if (!is_file($this->path)) {
@@ -104,6 +106,8 @@ class SoftDeleteStore
         return array_merge($data, [
             'players' => is_array($decoded['players'] ?? null) ? $decoded['players'] : [],
             'questions' => is_array($decoded['questions'] ?? null) ? $decoded['questions'] : [],
+            'achievements' => is_array($decoded['achievements'] ?? null) ? $decoded['achievements'] : [],
+            'ranks' => is_array($decoded['ranks'] ?? null) ? $decoded['ranks'] : [],
         ]);
     }
 

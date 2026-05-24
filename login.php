@@ -8,6 +8,7 @@ if (is_logged_in()) {
 }
 
 $error      = get_flash('error');
+$deletedAccount = get_flash('deleted_account');
 $registered = get_flash('registered');
 $passwordReset = get_flash('password_reset');
 ?>
@@ -75,6 +76,20 @@ document.addEventListener('DOMContentLoaded', () => {
         icon: 'error', title: 'Login Failed',
         text: <?= json_encode($error) ?>,
         background: '#1a1830', color: '#f1f0ff', confirmButtonColor: '#4f46e5',
+    });
+});
+</script>
+<?php endif; ?>
+<?php if ($deletedAccount): ?>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    Swal.fire({
+        icon: 'warning',
+        title: 'Deleted Account',
+        html: '<p>This is a deleted account. Message the admin to recover it.</p><p style="margin-top:10px"><strong>Delete reason:</strong> ' + <?= json_encode(htmlspecialchars($deletedAccount['reason'] ?? 'No reason was recorded.')) ?> + '</p>',
+        background: '#1a1830',
+        color: '#f1f0ff',
+        confirmButtonColor: '#4f46e5',
     });
 });
 </script>

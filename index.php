@@ -32,6 +32,9 @@ if (is_logged_in()) {
 }
 
 $flash_registered = get_flash('registered');
+$flash_account_deleted = get_flash('account_deleted');
+$flash_recovery_success = get_flash('recovery_success');
+$flash_recovery_error = get_flash('recovery_error');
 
 require_once __DIR__ . '/models/User.php';
 $userModel   = new User();
@@ -514,6 +517,7 @@ $trophyImages = [
             <div class="hero-btns">
                 <a href="login.php" class="btn-primary"><i class="fas fa-play"></i> Start Quiz Now</a>
                 <a href="#leaderboard" class="btn-secondary"><i class="fas fa-trophy"></i> View Leaderboard</a>
+                <a href="#recovery" class="btn-secondary hero-recovery-btn" data-recovery-open><i class="fas fa-rotate-left"></i> Recover Account</a>
             </div>
         </div>
         <div class="hero-image">
@@ -697,7 +701,36 @@ $trophyImages = [
         <p>&copy; <?= date('Y') ?> TechTrivia. All rights reserved.</p>
     </footer>
 
+    <div class="recovery-modal" id="recoveryModal" aria-hidden="true">
+        <div class="recovery-backdrop" data-recovery-close></div>
+        <div class="recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="recoveryTitle">
+            <button type="button" class="recovery-close" data-recovery-close aria-label="Close">&times;</button>
+            <h2 id="recoveryTitle">Recover Deleted Account</h2>
+            <p>Enter your account credentials and why you want to return. The admin will review your request.</p>
+            <form action="controllers/AuthController.php" method="POST" autocomplete="off">
+                <input type="hidden" name="action" value="request_recovery">
+                <?= csrf_field() ?>
+                <label for="recoveryUsername">Username</label>
+                <input type="text" id="recoveryUsername" name="username" maxlength="20" required autocomplete="off">
+
+                <label for="recoveryEmail">Email</label>
+                <input type="email" id="recoveryEmail" name="email" maxlength="120" required autocomplete="off">
+
+                <label for="recoveryPassword">Password</label>
+                <input type="password" id="recoveryPassword" name="password" required autocomplete="new-password">
+
+                <label for="recoveryReason">Reason for returning</label>
+                <textarea id="recoveryReason" name="recovery_reason" maxlength="500" rows="4" required></textarea>
+
+                <button type="submit">Send Recovery Request</button>
+            </form>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <?php if ($flash_recovery_success || $flash_recovery_error): ?>
+        <script>window.recoveryFlashShown = true;</script>
+    <?php endif; ?>
     <script src="assets/js/global.js"></script>
     <script src="assets/js/landing.js"></script>
     <?php if ($flash_registered): ?>
@@ -710,6 +743,39 @@ $trophyImages = [
                 confirmButtonColor: '#4f46e5',
                 timer: 4000,
                 timerProgressBar: true,
+            });
+        </script>
+    <?php endif; ?>
+    <?php if ($flash_account_deleted): ?>
+        <script>
+            Swal.fire({
+                icon: 'success',
+                title: 'Account Deleted',
+                text: <?= json_encode($flash_account_deleted) ?>,
+                background: '#fff',
+                confirmButtonColor: '#2563eb',
+            });
+        </script>
+    <?php endif; ?>
+    <?php if ($flash_recovery_success): ?>
+        <script>
+            Swal.fire({
+                icon: 'success',
+                title: 'Request Sent',
+                text: <?= json_encode($flash_recovery_success) ?>,
+                background: '#fff',
+                confirmButtonColor: '#4f46e5',
+            });
+        </script>
+    <?php endif; ?>
+    <?php if ($flash_recovery_error): ?>
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Recovery Request Failed',
+                text: <?= json_encode($flash_recovery_error) ?>,
+                background: '#fff',
+                confirmButtonColor: '#4f46e5',
             });
         </script>
     <?php endif; ?>

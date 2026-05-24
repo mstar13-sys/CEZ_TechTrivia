@@ -115,9 +115,9 @@ function setTheme(theme) {
     }
 
     if (theme === 'light') {
-        document.documentElement.style.setProperty('--bg', '#f8fafc');
+        document.documentElement.style.setProperty('--bg', '#ffffff');
         document.documentElement.style.setProperty('--card-bg', '#ffffff');
-        document.documentElement.style.setProperty('--border', '#e2e8f0');
+        document.documentElement.style.setProperty('--border', '#94a3b8');
         document.documentElement.style.setProperty('--text', '#1e293b');
         document.documentElement.style.setProperty('--muted', '#64748b');
     } else {

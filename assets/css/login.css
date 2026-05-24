@@ -324,7 +324,7 @@ body.light-mode {
     --bg-input: #f8fafc;
     --text-main: #111827;
     --text-muted: #64748b;
-    --border: #e2e8f0;
+    --border: #94a3b8;
 }
 
 body.light-mode::before {
@@ -336,8 +336,8 @@ body.light-mode::before {
 
 body.light-mode .container {
     box-shadow:
-        0 20px 40px rgba(0,0,0,0.08),
-        0 0 0 1px rgba(37,99,235,0.1);
+        0 18px 42px rgba(15,23,42,0.14),
+        0 0 0 1px rgba(37,99,235,0.16);
 }
 
 body.light-mode input:focus {

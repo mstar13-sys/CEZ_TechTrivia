@@ -4,6 +4,46 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     loadLeaderboard();
+    initRecoveryModal();
+
+    function initRecoveryModal() {
+        const modal = document.getElementById('recoveryModal');
+        if (!modal) return;
+
+        const openButtons = document.querySelectorAll('[data-recovery-open]');
+        const closeButtons = modal.querySelectorAll('[data-recovery-close]');
+        const firstInput = modal.querySelector('input[name="username"]');
+
+        function openModal(event) {
+            if (event) event.preventDefault();
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('recovery-open');
+            setTimeout(() => firstInput?.focus(), 50);
+        }
+
+        function closeModal() {
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('recovery-open');
+        }
+
+        openButtons.forEach(button => button.addEventListener('click', openModal));
+        closeButtons.forEach(button => button.addEventListener('click', closeModal));
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && modal.classList.contains('open')) {
+                closeModal();
+            }
+        });
+
+        const shouldAutoOpen = window.location.hash === '#recovery' && !window.recoveryFlashShown;
+        if (window.location.hash === '#recovery') {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+        if (shouldAutoOpen) {
+            openModal();
+        }
+    }
 
     async function loadLeaderboard() {
         const container = document.getElementById('leaderboardBody');

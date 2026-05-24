@@ -105,9 +105,75 @@ class AuthController {
                 redirect_to('../views/dashboard.php');
             }
         } else {
+            $deletedAccount = $this->user->getDeletedLoginDetails($username, $password);
+            if ($deletedAccount) {
+                $meta = $deletedAccount['deleted_meta'] ?? [];
+                set_flash('deleted_account', [
+                    'username' => $deletedAccount['username'] ?? $username,
+                    'reason' => $meta['reason'] ?? 'No reason was recorded.',
+                ]);
+                redirect_to('../login.php');
+            }
+
             set_flash('error', 'Incorrect username or password.');
             redirect_to('../login.php');
         }
+    }
+
+    public function requestRecovery() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            redirect_to('../index.php');
+        }
+
+        if (!verify_csrf($_POST['csrf_token'] ?? '')) {
+            set_flash('recovery_error', 'Invalid request. Please try again.');
+            redirect_to('../index.php#recovery');
+        }
+
+        $username = trim($_POST['username'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+        $reason = normalize_recovery_reason($_POST['recovery_reason'] ?? '');
+
+        if ($username === '' || $email === '' || $password === '' || $reason === '') {
+            set_flash('recovery_error', 'Fill in your username, email, password, and return reason.');
+            redirect_to('../index.php#recovery');
+        }
+        if (strlen($username) < 3 || strlen($username) > 20 || !preg_match('/^[a-zA-Z0-9_]+$/', $username) || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 120) {
+            set_flash('recovery_error', 'Enter valid account credentials.');
+            redirect_to('../index.php#recovery');
+        }
+        if (strlen($reason) > 500) {
+            set_flash('recovery_error', 'Return reason must be 500 characters or fewer.');
+            redirect_to('../index.php#recovery');
+        }
+
+        $account = $this->user->getDeletedRecoveryAccount($username, $email, $password);
+        if (!$account) {
+            set_flash('recovery_error', 'No deleted account matched those credentials.');
+            redirect_to('../index.php#recovery');
+        }
+
+        $notifications = new NotificationStore();
+        $meta = $account['deleted_meta'] ?? [];
+        $stored = $notifications->add(
+            'recovery_request',
+            'Account recovery request',
+            $account['username'] . ' wants to recover a deleted account.',
+            [
+                'player_id' => (int)$account['player_id'],
+                'username' => $account['username'],
+                'email' => $account['email'],
+                'deleted_reason' => $meta['reason'] ?? '',
+                'return_reason' => $reason,
+            ]
+        );
+
+        set_flash(
+            $stored ? 'recovery_success' : 'recovery_error',
+            $stored ? 'Your recovery request was sent to the admin.' : 'Could not save your recovery request. Please try again.'
+        );
+        redirect_to('../index.php#recovery');
     }
 
     public function forgotPassword() {
@@ -181,6 +247,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 switch ($action) {
     case 'register': $auth->register(); break;
     case 'login':    $auth->login();    break;
+    case 'request_recovery': $auth->requestRecovery(); break;
     case 'forgot_password': $auth->forgotPassword(); break;
     case 'logout':   $auth->logout();   break;
     case 'check_availability':

@@ -48,9 +48,9 @@
     function applyTheme(theme) {
         if (theme === 'light') {
             document.body.classList.add('light-mode');
-            document.documentElement.style.setProperty('--bg',      '#f1f5f9');
+            document.documentElement.style.setProperty('--bg',      '#ffffff');
             document.documentElement.style.setProperty('--card-bg', '#ffffff');
-            document.documentElement.style.setProperty('--border',  '#cbd5e1');
+            document.documentElement.style.setProperty('--border',  '#94a3b8');
             document.documentElement.style.setProperty('--text',    '#111827');
             document.documentElement.style.setProperty('--muted',   '#475569');
         } else {

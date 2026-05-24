@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/SoftDeleteStore.php';
+require_once __DIR__ . '/../core/NotificationStore.php';
 
 // ── User Model ────────────────────────────────────────────────
 class User
@@ -14,12 +15,14 @@ class User
 
     private $conn;
     private $softDeletes;
+    private $notifications;
 
     public function __construct()
     {
         $db = new Database();
         $this->conn = $db->getConnection();
         $this->softDeletes = new SoftDeleteStore();
+        $this->notifications = new NotificationStore();
     }
 
     // ── Auth ──────────────────────────────────────────────────
@@ -45,6 +48,53 @@ class User
             if (password_verify($password, $user['password'])) return $user;
         }
         return false;
+    }
+
+    public function getDeletedLoginDetails($username, $password)
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM player WHERE username = :username");
+        $stmt->execute([':username' => trim((string)$username)]);
+        $user = $stmt->fetch();
+
+        if (!$user || ($user['role'] ?? 'player') === 'admin') {
+            return null;
+        }
+
+        if (!$this->softDeletes->isDeleted('players', $user['player_id']) || !password_verify((string)$password, $user['password'])) {
+            return null;
+        }
+
+        $deleted = $this->softDeletes->listDeleted('players');
+        return [
+            'player_id' => (int)$user['player_id'],
+            'username' => $user['username'],
+            'email' => $user['email'],
+            'deleted_meta' => $deleted[(string)(int)$user['player_id']] ?? [],
+        ];
+    }
+
+    public function getDeletedRecoveryAccount($username, $email, $password)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT * FROM player WHERE username = :username AND email = :email AND role != 'admin'"
+        );
+        $stmt->execute([
+            ':username' => trim((string)$username),
+            ':email' => trim((string)$email),
+        ]);
+        $user = $stmt->fetch();
+
+        if (!$user || !$this->softDeletes->isDeleted('players', $user['player_id']) || !password_verify((string)$password, $user['password'])) {
+            return null;
+        }
+
+        $deleted = $this->softDeletes->listDeleted('players');
+        return [
+            'player_id' => (int)$user['player_id'],
+            'username' => $user['username'],
+            'email' => $user['email'],
+            'deleted_meta' => $deleted[(string)(int)$user['player_id']] ?? [],
+        ];
     }
 
     public function userExists($username)
@@ -106,13 +156,30 @@ class User
 
     public function deletePlayer($id, $reason = '', ?array $deletedBy = null)
     {
-        $stmt = $this->conn->prepare("SELECT player_id FROM player WHERE player_id = :id AND role != 'admin'");
+        $stmt = $this->conn->prepare("SELECT player_id, username, email FROM player WHERE player_id = :id AND role != 'admin'");
         $stmt->execute([':id' => (int)$id]);
-        if (!$stmt->fetch()) {
+        $player = $stmt->fetch();
+        if (!$player) {
             return false;
         }
 
-        return $this->softDeletes->markDeleted('players', (int)$id, $reason, $deletedBy);
+        $result = $this->softDeletes->markDeleted('players', (int)$id, $reason, $deletedBy);
+        if ($result) {
+            $this->notifications->add(
+                'account_deleted',
+                'Account deleted',
+                $player['username'] . ' was moved to deleted records.',
+                [
+                    'player_id' => (int)$player['player_id'],
+                    'username' => $player['username'],
+                    'email' => $player['email'],
+                    'delete_reason' => function_exists('normalize_delete_reason') ? normalize_delete_reason($reason) : trim((string)$reason),
+                    'deleted_by_username' => $deletedBy['username'] ?? 'Self',
+                ]
+            );
+        }
+
+        return $result;
     }
 
     public function restorePlayer($id)
@@ -181,7 +248,7 @@ class User
              ORDER BY condition_type ASC, condition_value ASC, title ASC"
         );
         $stmt->execute();
-        return $stmt->fetchAll();
+        return $this->softDeletes->filterRows('achievements', $stmt->fetchAll(), 'achievement_id');
     }
 
     public function getAchievementById($achievement_id)
@@ -230,18 +297,49 @@ class User
 
     public function deleteAchievement($achievement_id)
     {
-        $this->conn->beginTransaction();
-        try {
-            $this->conn->prepare("DELETE FROM playerachievement WHERE achievement_id = :id")
-                ->execute([':id' => (int)$achievement_id]);
-            $result = $this->conn->prepare("DELETE FROM achievement WHERE achievement_id = :id")
-                ->execute([':id' => (int)$achievement_id]);
-            $this->conn->commit();
-            return $result;
-        } catch (Exception $e) {
-            $this->conn->rollBack();
+        return $this->deleteAchievementWithReason($achievement_id, 'Deleted by admin.');
+    }
+
+    public function deleteAchievementWithReason($achievement_id, $reason = '', ?array $deletedBy = null)
+    {
+        $stmt = $this->conn->prepare("SELECT achievement_id FROM achievement WHERE achievement_id = :id");
+        $stmt->execute([':id' => (int)$achievement_id]);
+        if (!$stmt->fetch()) {
             return false;
         }
+
+        return $this->softDeletes->markDeleted('achievements', (int)$achievement_id, $reason, $deletedBy);
+    }
+
+    public function restoreAchievement($achievement_id)
+    {
+        return $this->softDeletes->restore('achievements', (int)$achievement_id);
+    }
+
+    public function getDeletedAchievements()
+    {
+        $deleted = $this->softDeletes->listDeleted('achievements');
+        $achievements = [];
+
+        foreach ($deleted as $id => $meta) {
+            $stmt = $this->conn->prepare(
+                "SELECT achievement_id, title, description, condition_type, condition_value
+                 FROM achievement
+                 WHERE achievement_id = :id"
+            );
+            $stmt->execute([':id' => (int)$id]);
+            $achievement = $stmt->fetch();
+            if ($achievement) {
+                $achievement['deleted_meta'] = $meta;
+                $achievements[] = $achievement;
+            }
+        }
+
+        usort($achievements, function ($a, $b) {
+            return strcmp($b['deleted_meta']['deleted_at'] ?? '', $a['deleted_meta']['deleted_at'] ?? '');
+        });
+
+        return $achievements;
     }
 
     public function getPlayerAchievements($player_id)
@@ -257,18 +355,20 @@ class User
              ORDER BY unlocked DESC, a.condition_type ASC, a.condition_value ASC, a.title ASC"
         );
         $stmt->execute([':pid' => (int)$player_id]);
-        return $stmt->fetchAll();
+        return $this->softDeletes->filterRows('achievements', $stmt->fetchAll(), 'achievement_id');
     }
 
     public function getAchievementSummary($player_id)
     {
-        $stmt = $this->conn->prepare(
-            "SELECT
-                (SELECT COUNT(*) FROM achievement) AS total_achievements,
-                (SELECT COUNT(*) FROM playerachievement WHERE player_id = :pid) AS unlocked_achievements"
-        );
-        $stmt->execute([':pid' => (int)$player_id]);
-        return $stmt->fetch();
+        $achievements = $this->getPlayerAchievements($player_id);
+        $unlocked = array_filter($achievements, function ($achievement) {
+            return (int)($achievement['unlocked'] ?? 0) === 1;
+        });
+
+        return [
+            'total_achievements' => count($achievements),
+            'unlocked_achievements' => count($unlocked),
+        ];
     }
 
     public function getAllRanks()
@@ -279,7 +379,7 @@ class User
              ORDER BY min_xp ASC"
         );
         $stmt->execute();
-        return $stmt->fetchAll();
+        return $this->softDeletes->filterRows('ranks', $stmt->fetchAll(), 'rank_id');
     }
 
     public function getRankById($rank_id)
@@ -328,8 +428,49 @@ class User
 
     public function deleteRank($rank_id)
     {
-        $stmt = $this->conn->prepare("DELETE FROM `rank` WHERE rank_id = :id");
-        return $stmt->execute([':id' => (int)$rank_id]);
+        return $this->deleteRankWithReason($rank_id, 'Deleted by admin.');
+    }
+
+    public function deleteRankWithReason($rank_id, $reason = '', ?array $deletedBy = null)
+    {
+        $stmt = $this->conn->prepare("SELECT rank_id FROM `rank` WHERE rank_id = :id");
+        $stmt->execute([':id' => (int)$rank_id]);
+        if (!$stmt->fetch()) {
+            return false;
+        }
+
+        return $this->softDeletes->markDeleted('ranks', (int)$rank_id, $reason, $deletedBy);
+    }
+
+    public function restoreRank($rank_id)
+    {
+        return $this->softDeletes->restore('ranks', (int)$rank_id);
+    }
+
+    public function getDeletedRanks()
+    {
+        $deleted = $this->softDeletes->listDeleted('ranks');
+        $ranks = [];
+
+        foreach ($deleted as $id => $meta) {
+            $stmt = $this->conn->prepare(
+                "SELECT rank_id, rank_name, min_xp, max_xp, medal
+                 FROM `rank`
+                 WHERE rank_id = :id"
+            );
+            $stmt->execute([':id' => (int)$id]);
+            $rank = $stmt->fetch();
+            if ($rank) {
+                $rank['deleted_meta'] = $meta;
+                $ranks[] = $rank;
+            }
+        }
+
+        usort($ranks, function ($a, $b) {
+            return strcmp($b['deleted_meta']['deleted_at'] ?? '', $a['deleted_meta']['deleted_at'] ?? '');
+        });
+
+        return $ranks;
     }
 
     public function getRankForXp($xp)
@@ -338,11 +479,11 @@ class User
             "SELECT rank_id, rank_name, min_xp, max_xp, medal
              FROM `rank`
              WHERE :xp_min >= min_xp AND (max_xp IS NULL OR :xp_max <= max_xp)
-             ORDER BY min_xp DESC
-             LIMIT 1"
+             ORDER BY min_xp DESC"
         );
         $stmt->execute([':xp_min' => (int)$xp, ':xp_max' => (int)$xp]);
-        $rank = $stmt->fetch();
+        $ranks = $this->softDeletes->filterRows('ranks', $stmt->fetchAll(), 'rank_id');
+        $rank = $ranks[0] ?? null;
         return $rank ?: [
             'rank_name' => 'Rookie',
             'min_xp' => 0,
@@ -357,11 +498,11 @@ class User
             "SELECT rank_id, rank_name, min_xp, max_xp, medal
              FROM `rank`
              WHERE min_xp > :xp
-             ORDER BY min_xp ASC
-             LIMIT 1"
+             ORDER BY min_xp ASC"
         );
         $stmt->execute([':xp' => (int)$xp]);
-        return $stmt->fetch();
+        $ranks = $this->softDeletes->filterRows('ranks', $stmt->fetchAll(), 'rank_id');
+        return $ranks[0] ?? false;
     }
 
     public function getXpPerCorrectAnswer($difficulty)
